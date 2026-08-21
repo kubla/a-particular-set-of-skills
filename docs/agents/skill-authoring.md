@@ -38,7 +38,7 @@ Give test-created artifacts a unique skill-and-run identifier. Record their exac
 
 Obtain explicit approval before a scenario performs an irreversible, account-wide, or externally visible action.
 
-Write raw command output, account-derived data, and cleanup manifests under `.acceptance-runs/`; that directory is not committed. A sanitized acceptance receipt must record:
+Write raw command output, account-derived data, cleanup manifests, and acceptance receipts under `.acceptance-runs/`; that directory is neither committed nor published. Each local acceptance receipt must record:
 
 - skill and scenario;
 - timestamp;
