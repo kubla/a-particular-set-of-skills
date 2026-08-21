@@ -2,12 +2,13 @@
 
 This repository uses Fulcra as an owner-controlled context backend. Context may outlive any particular application, agent, model, or provider; agents are clients of that context, not its owners.
 
-When working with Fulcra:
+Every skill in this repository is built on Fulcra and conforms to the [Agent Skills specification](https://agentskills.io/specification). Access Fulcra only through the current CLI:
 
-- Use it for durable, owner-scoped context while keeping application-specific operational state in the application.
-- Preserve user consent, ownership, provenance, and the distinction between source observations and agent-derived conclusions.
-- Expect available data and historical coverage to vary by account.
-- Choose the interface that fits the task: Python or REST for application code, CLI for shell workflows, or MCP for compatible agent environments.
+```bash
+uvx --from fulcra-api@latest fulcra <command>
+```
+
+Each skill must be independently distributable and declare `Requires uv and network access.` in its `compatibility` field.
 
 Consult live documentation when implementation details matter:
 
@@ -16,6 +17,10 @@ Consult live documentation when implementation details matter:
 - [Fulcra documentation](https://docs.fulcradynamics.com/) for current concepts, interfaces, and API details.
 
 ## Agent skills
+
+### Authoring and acceptance
+
+When creating or changing a skill, follow `docs/agents/skill-authoring.md`. A skill change is complete only after structural validation, relevant script tests, and live-account acceptance pass.
 
 ### Issue tracker
 
