@@ -2,7 +2,7 @@
 
 This repository uses Fulcra as an owner-controlled context backend. Context may outlive any particular application, agent, model, or provider; agents are clients of that context, not its owners.
 
-Every skill in this repository is built on Fulcra and conforms to the [Agent Skills specification](https://agentskills.io/specification). Access Fulcra only through the current CLI:
+Every skill in this repository is built on Fulcra and conforms to the [Agent Skills specification](https://agentskills.io/specification). Access Fulcra through the current CLI:
 
 ```bash
 uvx --from fulcra-api@latest fulcra <command>
@@ -28,7 +28,7 @@ Issues and specs live as GitHub issues. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
-Use the default Matt Pocock triage labels. See `docs/agents/triage-labels.md`.
+Use Matt Pocock style triage labels. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
