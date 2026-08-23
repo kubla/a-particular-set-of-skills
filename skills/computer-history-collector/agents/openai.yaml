@@ -1,0 +1,4 @@
+interface:
+  display_name: "Computer History Collector"
+  short_description: "Project Codex Computer History into Fulcra"
+  default_prompt: "Use $computer-history-collector to set up or operate my Computer History projection in Fulcra."

@@ -20,11 +20,34 @@ uvx --from fulcra-api@latest fulcra <command>
 
 Use the CLI as the Fulcra boundary for instructions and bundled scripts. Keep authentication guidance to what the skill's workflow specifically requires.
 
+## Context collectors
+
+A **Context Collector** creates or maintains a portion of the owner's Context Projection. It is an owner-authorized program, integration, or agent role that acquires selected data from one or more sources and records it in the owner's context lake, preserving its provenance.
+
+For an Agent Skill that creates, configures, or operates a collector, use **`<Source> Collector`** as the display name and `<source>-collector` as the skill identifier. A collector skill may perform collection as an agent role or install and manage a separate runtime. The category does not prescribe commands, scheduling, deployment, or interaction models, and not every Fulcra-backed skill is a collector.
+
+### Collector manifests
+
+Each configured collector writes one Markdown manifest through the Fulcra Files interface at `Collector Manifests/<Collector Name>/<Collector Instance>.md`. The manifest declares the collector's intended behavior so agents can compare those expectations with the data visible in the owner's catalog. When the intended behavior changes, maintain the same file by editing the declaration or appending a change note; Fulcra's file snapshots preserve its successive versions.
+
+A Collector Manifest is not a heartbeat, Projection Status, or proof that collection is operating. Do not create Timeline events merely to represent the current declaration. For Computer History Collector, use `Collector Manifests/Computer History Collector/<computer name>.md`; computers with the same user-visible name intentionally maintain the same manifest path.
+
+Use these minimal headings:
+
+1. **Collector** — collector and configured-instance identity.
+2. **Sources** — what it acquires and relevant provenance.
+3. **Intended outputs** — the Fulcra data types or file namespaces it maintains.
+4. **Collection behavior** — cadence, triggers, and circumstances in which gaps are normal.
+
+Save the manifest's Fulcra path in the collector's local configuration and use that saved identity for subsequent changes. Keep this configuration separate from any Projection Map that associates individual source items with their projected Fulcra objects.
+
+When a collector is intentionally uninstalled, update its existing manifest to declare that collection ended. Leave the manifest and previously collected context in Fulcra; removing a collector does not express an intent to delete the owner's context.
+
 ## Completion
 
 A skill change is complete when every applicable check passes:
 
-1. Validate each affected directory with `skills-ref validate <skill-directory>`.
+1. Validate each affected directory with `uvx --from skills-ref agentskills validate <skill-directory>`.
 2. Run the relevant tests for bundled scripts.
 3. Invoke the skill through an agent and exercise its complete workflow against the expected authenticated Fulcra account.
 
