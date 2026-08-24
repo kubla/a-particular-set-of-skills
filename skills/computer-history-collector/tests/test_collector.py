@@ -18,7 +18,7 @@ sys.modules[SPEC.name] = collector_module
 SPEC.loader.exec_module(collector_module)
 
 
-TEN_MINUTE = """---
+TEN_MINUTE_NOTE = """---
 title: A short work interval
 description: Work in Codex and Safari
 applications: [com.openai.codex, com.apple.Safari]
@@ -29,7 +29,14 @@ applications: [com.openai.codex, com.apple.Safari]
 The captured segment ended at `14:39:17Z` after the user finished the task.
 """
 
-SIX_HOUR = """---
+TEN_MINUTE = TEN_MINUTE_NOTE + """
+## Citations
+
+- /Users/example/Library/Caches/ComputerUse/segments/2026-08-23T14-30-00Z/events.jsonl
+- /Users/example/Library/Caches/ComputerUse/segments/2026-08-23T14-30-00Z/metadata.json
+"""
+
+SIX_HOUR_NOTE = """---
 title: A quiet block
 description: No activity was visible
 applications: []
@@ -38,6 +45,19 @@ applications: []
 # Summary
 
 No activity was visible during this block.
+"""
+
+SIX_HOUR = SIX_HOUR_NOTE + """
+## Citations
+
+- 2026-08-23T12-00-00-AbCd-10min-memory-summary.md
+"""
+
+REVISED_TEN_MINUTE_NOTE = TEN_MINUTE_NOTE + "\nA corrected detail.\n"
+REVISED_TEN_MINUTE = REVISED_TEN_MINUTE_NOTE + """
+## Citations
+
+- /Users/example/Library/Caches/ComputerUse/segments/2026-08-23T14-30-00Z/events.jsonl
 """
 
 
@@ -64,6 +84,27 @@ class FakeCLI:
         self.events.append(("delete", record_id))
 
 
+class FailingCLI(FakeCLI):
+    def __init__(self, operation: str):
+        super().__init__()
+        self.operation = operation
+
+    def upload_file(self, local_path: Path, remote_path: str) -> None:
+        if self.operation == "upload":
+            raise collector_module.CollectorError("synthetic upload failure")
+        super().upload_file(local_path, remote_path)
+
+    def record(self, data_type: str, record: dict, tags, sources) -> None:
+        if self.operation == "record":
+            raise collector_module.CollectorError("synthetic record failure")
+        super().record(data_type, record, tags, sources)
+
+    def delete_record(self, data_type: str, record_id: str) -> None:
+        if self.operation == "delete":
+            raise collector_module.CollectorError("synthetic delete failure")
+        super().delete_record(data_type, record_id)
+
+
 class SummaryParsingTests(unittest.TestCase):
     def test_known_helper_bundle_ids_have_human_readable_names(self):
         self.assertEqual(
@@ -77,7 +118,7 @@ class SummaryParsingTests(unittest.TestCase):
             "Open and Save Panel",
         )
 
-    def test_preserves_markdown_and_uses_explicit_end(self):
+    def test_preserves_source_and_projects_without_citations(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "2026-08-23T14-30-00-AbCd-10min-memory-summary.md"
             path.write_text(TEN_MINUTE, encoding="utf-8")
@@ -85,6 +126,7 @@ class SummaryParsingTests(unittest.TestCase):
             summary = collector_module.parse_summary(path)
 
         self.assertEqual(summary.content, TEN_MINUTE)
+        self.assertEqual(summary.projected_note, TEN_MINUTE_NOTE)
         self.assertEqual(summary.kind, "10min")
         self.assertEqual(
             collector_module.isoformat(summary.start), "2026-08-23T14:30:00Z"
@@ -108,8 +150,9 @@ class SummaryParsingTests(unittest.TestCase):
 
     def test_six_hour_child_session_end_does_not_shorten_rollup(self):
         content = (
-            SIX_HOUR
+            SIX_HOUR_NOTE
             + "\nA child segment recorded a session.ended event at `2026-08-23T12:17:04Z`.\n"
+            + "\n## Citations\n\n- 2026-08-23T12-00-00-AbCd-10min-memory-summary.md\n"
         )
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "2026-08-23T12-00-00-WxYz-6h-memory-summary.md"
@@ -127,6 +170,69 @@ class SummaryParsingTests(unittest.TestCase):
             path.write_text(TEN_MINUTE, encoding="utf-8")
             with self.assertRaises(collector_module.CollectorError):
                 collector_module.parse_summary(path)
+
+    def test_projection_does_not_interpret_citation_content(self):
+        changed = TEN_MINUTE_NOTE + "\n## Citations\n\n- https://example.com/source\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "2026-08-23T14-30-00-AbCd-10min-memory-summary.md"
+            path.write_text(changed, encoding="utf-8")
+
+            summary = collector_module.parse_summary(path)
+
+        self.assertEqual(summary.projected_note, TEN_MINUTE_NOTE)
+
+    def test_projection_keeps_markdown_when_citations_section_disappears(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "2026-08-23T14-30-00-AbCd-10min-memory-summary.md"
+            path.write_text(TEN_MINUTE_NOTE, encoding="utf-8")
+
+            summary = collector_module.parse_summary(path)
+
+        self.assertEqual(summary.projected_note, TEN_MINUTE_NOTE)
+
+    def test_projection_keeps_nonterminal_citations_section(self):
+        changed = (
+            TEN_MINUTE_NOTE
+            + "\n## Citations\n\n- /tmp/source.jsonl\n"
+            + "\n## Later content\n\nThis must not be discarded.\n"
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "2026-08-23T14-30-00-AbCd-10min-memory-summary.md"
+            path.write_text(changed, encoding="utf-8")
+
+            summary = collector_module.parse_summary(path)
+
+        self.assertEqual(summary.projected_note, changed)
+
+    def test_preview_exposes_exact_note_and_human_readable_metadata(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "2026-08-23T14-30-00-AbCd-10min-memory-summary.md"
+            path.write_text(TEN_MINUTE, encoding="utf-8")
+            summary = collector_module.parse_summary(path)
+
+            preview = collector_module.projection_preview(summary, "Feedback Mac")
+
+        self.assertEqual(preview["annotation"]["note"], TEN_MINUTE_NOTE)
+        self.assertEqual(
+            preview["annotation"]["recorded_at"],
+            {
+                "start_time": "2026-08-23T14:30:00Z",
+                "end_time": "2026-08-23T14:39:17Z",
+            },
+        )
+        self.assertEqual(
+            preview["tag_names"],
+            ["Feedback Mac", "Codex", "Safari"],
+        )
+        self.assertEqual(
+            preview["collector_sources"],
+            [
+                "Codex",
+                "Codex Computer History",
+                "Codex Computer History on Feedback Mac",
+            ],
+        )
+        self.assertNotIn("remote_file", preview["annotation"])
 
 
 class ProjectionTests(unittest.TestCase):
@@ -181,10 +287,10 @@ class ProjectionTests(unittest.TestCase):
         self.assertEqual(
             data_type, "DurationAnnotation/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
         )
-        self.assertEqual(record["note"], TEN_MINUTE)
+        self.assertEqual(record["note"], TEN_MINUTE_NOTE)
         self.assertNotIn("remote_file", record)
         self.assertEqual(record["recorded_at"]["end_time"], "2026-08-23T14:39:17Z")
-        self.assertEqual(tags, ["10-minute", "Test Mac", "Codex", "Safari"])
+        self.assertEqual(tags, ["Test Mac", "Codex", "Safari"])
         self.assertEqual(
             sources,
             ["Codex", "Codex Computer History", "Codex Computer History on Test Mac"],
@@ -209,7 +315,7 @@ class ProjectionTests(unittest.TestCase):
         self.collector.sweep(notify=False, minimum_age_seconds=0)
         prior_id = self.cli.records[0][1]["id"]
         self.cli.events.clear()
-        path.write_text(TEN_MINUTE + "\nA corrected detail.\n", encoding="utf-8")
+        path.write_text(REVISED_TEN_MINUTE, encoding="utf-8")
 
         counts = self.collector.sweep(notify=False, minimum_age_seconds=0)
 
@@ -238,6 +344,57 @@ class ProjectionTests(unittest.TestCase):
         self.assertEqual(self.cli.records, [])
         self.assertEqual(self.cli.deletes, [])
         self.assertEqual(self.collector.map_path.read_text(), projection_map_before)
+
+    def test_record_failure_does_not_advance_projection_map(self):
+        self.add_summary()
+        failing = FailingCLI("record")
+        self.collector.cli = failing
+
+        with self.assertRaises(collector_module.CollectorError):
+            self.collector.sweep(notify=False, minimum_age_seconds=0)
+
+        self.assertFalse(self.collector.map_path.exists())
+        status = json.loads(self.collector.status_path.read_text())
+        self.assertEqual(status["state"], "error")
+
+    def test_interrupted_revision_retries_before_advancing_map(self):
+        path = self.add_summary()
+        self.collector.sweep(notify=False, minimum_age_seconds=0)
+        prior_map = json.loads(self.collector.map_path.read_text())
+        failing = FailingCLI("delete")
+        self.collector.cli = failing
+        path.write_text(REVISED_TEN_MINUTE, encoding="utf-8")
+
+        with self.assertRaises(collector_module.CollectorError):
+            self.collector.sweep(notify=False, minimum_age_seconds=0)
+
+        self.assertEqual(json.loads(self.collector.map_path.read_text()), prior_map)
+        failing.operation = ""
+        counts = self.collector.sweep(notify=False, minimum_age_seconds=0)
+        self.assertEqual(counts["revised"], 1)
+        self.assertNotEqual(
+            json.loads(self.collector.map_path.read_text()),
+            prior_map,
+        )
+
+    def test_owner_change_stops_before_any_remote_write(self):
+        self.add_summary()
+
+        class OtherOwnerCLI(FakeCLI):
+            def authenticated_user_id(self) -> str:
+                return "22222222-2222-4222-8222-222222222222"
+
+        other_owner = OtherOwnerCLI()
+        self.collector.cli = other_owner
+
+        with self.assertRaises(collector_module.CollectorError):
+            self.collector.sweep(notify=False, minimum_age_seconds=0)
+
+        self.assertEqual(other_owner.uploads, [])
+        self.assertEqual(other_owner.records, [])
+        status = json.loads(self.collector.status_path.read_text())
+        self.assertEqual(status["state"], "action_required")
+        self.assertEqual(status["condition"], "fulcra-owner-changed")
 
 
 class StatusTests(unittest.TestCase):

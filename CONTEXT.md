@@ -37,7 +37,7 @@ The unchanged Computer History Memory uploaded to Fulcra as a file at `Codex/<co
 The source-native Fulcra file hierarchy rooted at `Codex/<computer name>/memories/`. It preserves Codex's internal memory organization and can contain future memory-gathering projections beyond Computer History.
 
 **Projection Record**:
-One Fulcra duration annotation representing exactly one completed Computer History Memory. It contains the memory's current time range, unchanged Markdown, and provenance metadata, but no direct reference to its Source Artifact.
+One Fulcra duration annotation representing exactly one completed Computer History Memory. It contains the memory's current time range, projected Markdown with the source's terminal Citations section omitted, and provenance metadata, but no direct reference to its Source Artifact.
 _Avoid_: Data row
 
 **Projection Stream**:
@@ -53,7 +53,7 @@ The nested origin of a Projection Record: Computer History produced by Codex run
 _Avoid_: Contributing application
 
 **Contributing Application**:
-An application whose activity contributed to a Computer History Memory, as listed in the memory's metadata. Every listed application, including system helpers, becomes a human-readable tag on the Projection Record but is not part of the Projection Source; the original bundle identifier remains in the unchanged Markdown.
+An application whose activity contributed to a Computer History Memory, as listed in the memory's metadata. Every listed application, including system helpers, becomes a human-readable tag on the Projection Record but is not part of the Projection Source; the original bundle identifier remains in the projected Markdown frontmatter and unchanged Source Artifact.
 
 **Projection Interval**:
 The time span represented by a Projection Record. It begins at the source filename's timestamp and ends at an explicit end time in the derived Markdown when available, otherwise at the nominal end implied by the Summary Kind; raw interaction events are never consulted.

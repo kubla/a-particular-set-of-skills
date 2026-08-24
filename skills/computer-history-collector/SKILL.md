@@ -1,25 +1,43 @@
 ---
 name: computer-history-collector
-description: Set up and operate the Computer History Collector, which continuously projects completed Codex Computer History Markdown summaries into the owner's Fulcra context lake. Use when a user wants to collect, backfill, check, repair, or stop Computer History collection in Fulcra, or asks about this collector's projection behavior.
-compatibility: Requires uv and network access.
+description: Preview, set up, and operate the Computer History Collector, which continuously projects completed Codex Computer History Markdown summaries into the owner's Fulcra context lake. Use when a user wants to inspect, collect, backfill, check, repair, or stop Computer History collection in Fulcra, or asks about this collector's projection behavior.
 ---
 
 # Computer History Collector
 
 Use the bundled runtime to configure a token-free macOS LaunchAgent that sweeps about every ten minutes.
 
+## Preview
+
+When the user wants to inspect the projected contents before setup, run this from the skill directory:
+
+```bash
+uv run --script scripts/computer_history_collector.py preview "<completed summary.md>"
+```
+
+This prints the projected note, interval, tag names, collector sources, data type, and remote file path. The projected note preserves the summary Markdown except for its terminal `Citations` section; the uploaded source file remains unchanged. Preview does not authenticate or write to Fulcra.
+
+When the user asks to review a preview before setup, stop after presenting it and wait for their feedback before authenticating or writing anything.
+
 ## Set up
 
 1. Confirm this is a Mac with Codex Computer History enabled.
 2. Locate the completed summaries directory. Prefer `$CODEX_HOME/memories/extensions/skysight/resources`; otherwise use `~/.codex/memories/extensions/skysight/resources` or ask for its location.
-3. From this skill directory, run:
+3. If independently verifying the authenticated owner before setup, expose only the owner ID in the task transcript:
+
+   ```bash
+   uvx --from fulcra-api@latest fulcra user-info | jq '{userid}'
+   ```
+
+   Never run unfiltered `user-info` in an agent-visible command because its response may contain unrelated private account fields.
+4. From this skill directory, run:
 
    ```bash
    uv run --script scripts/computer_history_collector.py setup --source-folder "<absolute path>"
    ```
 
-4. Help the user complete Fulcra's browser sign-in if prompted.
-5. Report the authenticated owner, computer name, initial sweep counts, managed runtime path, and whether scheduling succeeded. Never print or retain an access token.
+5. Help the user complete Fulcra's browser sign-in if prompted.
+6. Report the authenticated owner, computer name, initial sweep counts, managed runtime path, and whether scheduling succeeded. Never print or retain an access token.
 
 Setup is convergent. It preserves local configuration, Projection Map, and Projection Status while refreshing the managed runtime.
 

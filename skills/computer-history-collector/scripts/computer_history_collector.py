@@ -35,13 +35,11 @@ DATA_TYPES = {
         "name": "Computer History (10-minute)",
         "description": "Ten-minute Computer History summaries projected by owner-authorized Computer History Collectors.",
         "duration": dt.timedelta(minutes=10),
-        "tag": "10-minute",
     },
     "6h": {
         "name": "Computer History (6-hour)",
         "description": "Six-hour Computer History summaries projected by owner-authorized Computer History Collectors.",
         "duration": dt.timedelta(hours=6),
-        "tag": "6-hour",
     },
 }
 FILENAME_RE = re.compile(
@@ -117,6 +115,7 @@ class Summary:
     end: dt.datetime
     applications: tuple[str, ...]
     content: str
+    projected_note: str
     content_hash: str
 
 
@@ -413,6 +412,16 @@ def explicit_end(
     return max(plausible) if plausible else None
 
 
+def project_note(content: str) -> str:
+    matches = list(re.finditer(r"(?m)^## Citations[ \t]*\r?$", content))
+    if not matches:
+        return content
+    match = matches[-1]
+    if re.search(r"(?m)^#{1,2}[ \t]+", content[match.end() :]):
+        return content
+    return content[: match.start()].rstrip() + "\n"
+
+
 def parse_summary(path: Path) -> Summary:
     match = FILENAME_RE.match(path.name)
     if not match:
@@ -448,6 +457,7 @@ def parse_summary(path: Path) -> Summary:
         end=end,
         applications=parse_applications(frontmatter.group("header")),
         content=content,
+        projected_note=project_note(content),
         content_hash=hashlib.sha256(content.encode("utf-8")).hexdigest(),
     )
 
@@ -502,6 +512,73 @@ def source_names(computer: str) -> tuple[str, str, str]:
     return ("Codex", "Codex Computer History", f"Codex Computer History on {computer}")
 
 
+def projection_preview(summary: Summary, computer: str) -> dict[str, Any]:
+    return {
+        "source_file": str(summary.path),
+        "remote_file": (
+            f"Codex/{remote_component(computer)}/memories/extensions/skysight/resources/"
+            f"{summary.filename}"
+        ),
+        "data_type": DATA_TYPES[summary.kind]["name"],
+        "annotation": {
+            "recorded_at": {
+                "start_time": isoformat(summary.start),
+                "end_time": isoformat(summary.end),
+            },
+            "note": summary.projected_note,
+        },
+        "tag_names": [
+            computer,
+            *(
+                resolve_application_name(bundle_id)
+                for bundle_id in summary.applications
+            ),
+        ],
+        "collector_sources": list(source_names(computer)),
+    }
+
+
+def preview_summary_path(
+    requested_file: Path | None,
+    source_folder: Path,
+    *,
+    minimum_age_seconds: int,
+) -> Path:
+    if requested_file is not None:
+        path = requested_file.expanduser().resolve()
+        candidates = [path]
+    else:
+        if not source_folder.is_dir():
+            raise CollectorError(
+                f"Computer History folder does not exist: {source_folder}",
+                condition="source-folder-unavailable",
+                action_required=True,
+            )
+        candidates = sorted(
+            (
+                path
+                for path in source_folder.iterdir()
+                if path.is_file() and FILENAME_RE.match(path.name)
+            ),
+            reverse=True,
+        )
+    now_timestamp = utc_now().timestamp()
+    for path in candidates:
+        if not path.is_file() or not FILENAME_RE.match(path.name):
+            continue
+        if now_timestamp - path.stat().st_mtime >= minimum_age_seconds:
+            return path
+    if requested_file is not None:
+        raise CollectorError(
+            f"The requested file is not a completed, stable Computer History summary: {requested_file}",
+            condition="source-not-ready",
+        )
+    raise CollectorError(
+        "No completed, stable Computer History summaries are available to preview.",
+        condition="source-not-ready",
+    )
+
+
 def manifest_markdown(config: dict[str, Any], ended_at: str | None = None) -> str:
     state = (
         "Collection has ended. Existing projected context and source-file snapshots are retained."
@@ -525,7 +602,8 @@ def manifest_markdown(config: dict[str, Any], ended_at: str | None = None) -> st
 
 - Fulcra Files beneath `Codex/{remote_component(config["computer_name"])}/memories/extensions/skysight/resources/`.
 - Duration annotations in `Computer History (10-minute)` and `Computer History (6-hour)`.
-- Notes preserve each completed Markdown file unchanged; tags identify cadence, computer, and contributing applications.
+- Files preserve each completed Markdown summary unchanged; annotation notes omit its terminal Citations section.
+- Tags identify the computer and contributing applications.
 - Timeline records and source files are independently permissionable and are not directly linked.
 
 # Collection behavior
@@ -704,9 +782,9 @@ class Collector:
                     "start_time": isoformat(summary.start),
                     "end_time": isoformat(summary.end),
                 },
-                "note": summary.content,
+                "note": summary.projected_note,
             }
-            tags = [DATA_TYPES[summary.kind]["tag"], config["computer_name"]]
+            tags = [config["computer_name"]]
             tags.extend(app_names[bundle_id] for bundle_id in summary.applications)
             self.cli.upload_file(path, remote_path)
             self.cli.record(
@@ -870,6 +948,51 @@ def setup(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_preview(args: argparse.Namespace) -> int:
+    source_folder = (
+        Path(args.source_folder or default_source_folder()).expanduser().resolve()
+    )
+    path = preview_summary_path(
+        args.file,
+        source_folder,
+        minimum_age_seconds=args.minimum_age_seconds,
+    )
+    before = path.stat()
+    summary = parse_summary(path)
+    after = path.stat()
+    if before.st_size != after.st_size or before.st_mtime_ns != after.st_mtime_ns:
+        raise CollectorError(
+            f"Computer History file changed while being previewed: {path}",
+            condition="source-not-ready",
+        )
+    preview = projection_preview(summary, args.computer_name or computer_name())
+    if args.json:
+        print(json.dumps(preview, indent=2))
+        return 0
+    print(f"Source file: {preview['source_file']}")
+    print(f"Remote file: {preview['remote_file']}")
+    print(f"Data type: {preview['data_type']}")
+    print(
+        "Interval: "
+        f"{preview['annotation']['recorded_at']['start_time']} -> "
+        f"{preview['annotation']['recorded_at']['end_time']}"
+    )
+    print("Tag names:")
+    for tag in preview["tag_names"]:
+        print(f"- {tag}")
+    print("Collector sources:")
+    for source in preview["collector_sources"]:
+        print(f"- {source}")
+    print("Fulcra also adds its CLI and annotation-type provenance sources.")
+    print("Note (projected Markdown; terminal Citations section omitted):")
+    print("--- BEGIN NOTE ---")
+    print(preview["annotation"]["note"], end="")
+    if not preview["annotation"]["note"].endswith("\n"):
+        print()
+    print("--- END NOTE ---")
+    return 0
+
+
 def command_sweep(args: argparse.Namespace) -> int:
     state_dir = default_state_dir()
     config = read_json(state_dir / "config.json", {})
@@ -1009,6 +1132,17 @@ def parser() -> argparse.ArgumentParser:
         "--minimum-age-seconds", type=int, default=30, help=argparse.SUPPRESS
     )
     setup_parser.set_defaults(handler=setup)
+    preview_parser = subcommands.add_parser(
+        "preview", help="Show one projected annotation without writing to Fulcra"
+    )
+    preview_parser.add_argument("file", nargs="?", type=Path)
+    preview_parser.add_argument("--source-folder", type=Path)
+    preview_parser.add_argument("--computer-name")
+    preview_parser.add_argument("--json", action="store_true")
+    preview_parser.add_argument(
+        "--minimum-age-seconds", type=int, default=30, help=argparse.SUPPRESS
+    )
+    preview_parser.set_defaults(handler=command_preview)
     sweep_parser = subcommands.add_parser(
         "sweep", help="Project new and revised summaries now"
     )

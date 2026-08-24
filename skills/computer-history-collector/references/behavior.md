@@ -6,6 +6,8 @@ The collector reads only completed derived Markdown whose filename matches Codex
 
 Every completed summary is projected, including summaries that describe no activity. A missing local file never implies remote deletion.
 
+The `preview` command applies the same parser, note projection, and application-name resolver as a Sweep, then prints the proposed projection without authenticating or writing to Fulcra. Fulcra assigns tag UUIDs and adds its CLI and annotation-type provenance sources only during an actual record operation.
+
 ## Owner context
 
 Each summary produces two independently permissionable artifacts:
@@ -15,7 +17,9 @@ Each summary produces two independently permissionable artifacts:
 
 There are exactly two account-wide data types. Multiple computers contribute to them and are distinguished by the exact macOS computer-name tag and producer source. Identically named computers intentionally coalesce.
 
-The annotation note is the unchanged Markdown. Tags contain the summary cadence, computer name, and human-readable name of every application in frontmatter. Its start is the UTC timestamp in the filename. A plausible explicit end stated in the derived Markdown wins; otherwise the end is ten minutes or six hours after the start.
+The source-file upload preserves the Markdown unchanged. When the Markdown has a terminal `## Citations` section, the annotation note omits that section. Citation contents are not runtime inputs: the collector does not interpret them, and their absence or change does not interrupt collection. A non-terminal Citations section is retained so later content is never discarded accidentally.
+
+Tags contain the computer name and human-readable name of every application in frontmatter; the data type already identifies the summary cadence. The interval starts at the UTC timestamp in the filename. A plausible explicit end stated in the derived Markdown wins; otherwise the end is ten minutes or six hours after the start.
 
 The annotation does not contain a deterministic link to the uploaded source file.
 
