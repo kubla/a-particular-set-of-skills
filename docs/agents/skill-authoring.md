@@ -22,7 +22,7 @@ Use the CLI as the Fulcra boundary for instructions and bundled scripts. Keep au
 
 ## Context collectors
 
-A **Context Collector** creates or maintains a portion of the owner's Context Projection. It is an owner-authorized program, integration, or agent role that acquires selected data from one or more sources and records it in the owner's context lake, preserving its provenance.
+A **Context Collector** implements the Context Projection pattern. It is an owner-authorized program, integration, or agent role that acquires selected data from one or more sources and records it in the owner's context lake, preserving its provenance.
 
 For an Agent Skill that creates, configures, or operates a collector, use **`<Source> Collector`** as the display name and `<source>-collector` as the skill identifier. A collector skill may perform collection as an agent role or install and manage a separate runtime. The category does not prescribe commands, scheduling, deployment, or interaction models, and not every Fulcra-backed skill is a collector.
 
