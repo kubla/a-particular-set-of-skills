@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any
 
 COLLECTOR_NAME = "Computer History Collector"
-COLLECTOR_VERSION = "0.2.0"
+COLLECTOR_VERSION = "0.2.1"
 RUNTIME_SLUG = "computer-history-collector"
 LAUNCHD_LABEL = "com.fulcradynamics.computer-history-collector"
 MANIFEST_DIRECTORY = "Collector Manifests/Computer History Collector"

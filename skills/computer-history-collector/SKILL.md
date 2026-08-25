@@ -3,7 +3,7 @@ name: computer-history-collector
 description: Preview, set up, and operate the Computer History Collector, which continuously projects completed Codex Computer History Markdown summaries into the owner's Fulcra context lake. Use when a user wants to inspect, collect, backfill, check, repair, or stop Computer History collection in Fulcra, or asks about this collector's projection behavior.
 compatibility: Requires macOS, uv, and network access.
 metadata:
-  version: "0.2.0"
+  version: "0.2.1"
 ---
 
 # Computer History Collector

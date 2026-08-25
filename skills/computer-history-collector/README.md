@@ -4,7 +4,7 @@ If you already use Codex Computer History, Codex is writing compact summaries of
 
 > **Agents can't volunteer for work they can't see.**
 
-This skill grew out of simple curiosity about what Computer History was saving. It's more than a simple log; for instance, at the time I'm writing this (2026-August-28), each file has a section delightfully named `### Important non-obvious context about the user`
+This skill grew out of simple curiosity about what Computer History was saving. It's more than a simple log; for instance, at the time I'm writing this (2026-August-24), each file has a section delightfully named `### Important non-obvious context about the user`
 
 In my corpus of Codex Computer History memory files, this is where Codex records inferences about me that might matter later.
 
