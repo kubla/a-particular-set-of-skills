@@ -1,16 +1,20 @@
 # A Particular Set of Skills
 
-An evolving collection of independently installable [Agent Skills](https://agentskills.io/) built on [Fulcra](https://fulcradynamics.com/).
+Models and agents can be replaced. What they learn about their user should survive the replacement.
 
-Each skill gives an agent a focused workflow over the owner's Fulcra context. Skills access Fulcra exclusively through the current CLI:
+This is a collection of independently installable [Agent Skills](https://agentskills.io/) built on [Fulcra](https://fulcradynamics.com/). Each skill gives an agent a focused workflow over the owner's context lake. Everything required at runtime lives inside the skill directory.
+
+Skills access Fulcra exclusively through the current CLI:
 
 ```bash
 uvx --from fulcra-api@latest fulcra <command>
 ```
 
-## Status
+## Available skills
 
-The repository currently contains its authoring and acceptance conventions. It is intended to be cloned as a shared workshop for developing Fulcra skills. Installable skills will live under `skills/<skill-name>/`, with everything required at runtime contained inside each skill directory.
+| Skill | What it does | Compatibility |
+| --- | --- | --- |
+| [Computer History Collector](skills/computer-history-collector/) | Copies completed Codex Computer History summaries into Fulcra so agents the owner authorizes can read the same work history. | macOS, Codex Computer History, `uv`, and network access |
 
 ## Repository layout
 
@@ -18,6 +22,7 @@ The repository currently contains its authoring and acceptance conventions. It i
 .
 ├── skills/
 │   └── <skill-name>/
+│       ├── README.md      # human-facing purpose and installation
 │       ├── SKILL.md
 │       ├── scripts/       # optional
 │       ├── references/    # optional
@@ -32,7 +37,7 @@ The repository currently contains its authoring and acceptance conventions. It i
 
 ## Using the skills
 
-Each skill will follow the [Agent Skills specification](https://agentskills.io/specification) and can be copied or installed independently with a compatible agent client. Individual skill directories will document their own purpose and invocation.
+Each skill follows the [Agent Skills specification](https://agentskills.io/specification) and can be installed independently by a compatible agent client. Each skill directory documents its own purpose and installation.
 
 ## Developing a skill
 
