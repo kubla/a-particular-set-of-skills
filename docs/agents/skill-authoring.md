@@ -16,6 +16,8 @@ compatibility: Requires uv and network access.
 
 Version each independently distributable skill with Semantic Versioning. Put its version in `SKILL.md` as `metadata.version`, and create an annotated, skill-namespaced Git tag such as `<skill-name>-v1.2.3` for every release. A repository commit may therefore release one skill without incrementing its siblings.
 
+Publish human-facing release notes as a manually curated GitHub Release attached to that tag. Scope the notes to the affected skill rather than treating every repository commit since its previous tag as part of the release. Lead with the outcome, then cover user-visible changes, upgrade action, compatibility or breaking changes, sanitized verification, and a comparison link. Keep `SKILL.md` focused on current behavior and keep raw acceptance receipts local.
+
 Treat runtime/configuration format versions as separate schemas. Do not infer a skill release from an integer such as `"version": 1` in a configuration file or Projection Map.
 
 Perform every Fulcra operation through:
