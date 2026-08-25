@@ -92,6 +92,19 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def skill_metadata_version(path: Path) -> str | None:
+    in_metadata = False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line == "metadata:":
+            in_metadata = True
+            continue
+        if in_metadata and line and not line.startswith((" ", "\t")):
+            break
+        if in_metadata and line.strip().startswith("version:"):
+            return line.split(":", 1)[1].strip().strip("\"'")
+    return None
+
+
 def instant(value: Any) -> dt.datetime | None:
     if not isinstance(value, str):
         return None
@@ -128,6 +141,7 @@ def main() -> int:
         description="Verify an installed collector, scheduler, and Fulcra projection."
     )
     parser.add_argument("--expected-owner-id", required=True)
+    parser.add_argument("--expected-collector-version", required=True)
     parser.add_argument("--skill-dir", type=Path, default=INSTALLED_SKILL)
     parser.add_argument("--receipt", type=Path)
     args = parser.parse_args()
@@ -141,6 +155,7 @@ def main() -> int:
     skill_dir = args.skill_dir.expanduser().resolve()
     installed_script = skill_dir / "scripts" / "computer_history_collector.py"
     runtime_script = STATE_DIR / "lib" / "computer_history_collector.py"
+    local_manifest_path = STATE_DIR / "collector-manifest.md"
     config_path = STATE_DIR / "config.json"
     map_path = STATE_DIR / "projection-map.json"
     status_path = STATE_DIR / "status.json"
@@ -148,6 +163,7 @@ def main() -> int:
         skill_dir / "SKILL.md",
         installed_script,
         runtime_script,
+        local_manifest_path,
         config_path,
         map_path,
         status_path,
@@ -158,6 +174,7 @@ def main() -> int:
         raise VerificationError("; ".join(failures))
 
     runtime = load_runtime(runtime_script)
+    metadata_version = skill_metadata_version(skill_dir / "SKILL.md")
     config = load_json(config_path)
     projection_map = load_json(map_path)
     status = load_json(status_path)
@@ -170,6 +187,26 @@ def main() -> int:
     require(
         sha256(installed_script) == sha256(runtime_script),
         "Managed runtime does not match the installed skill runtime",
+    )
+    require(
+        metadata_version == args.expected_collector_version,
+        "Skill metadata version does not match the expected collector version",
+    )
+    require(
+        getattr(runtime, "COLLECTOR_VERSION", None) == metadata_version,
+        "Managed runtime version does not match the skill metadata version",
+    )
+    require(
+        config.get("collector_version") == metadata_version,
+        "Configured collector version does not match the skill metadata version",
+    )
+    require(
+        status.get("collector_version") == metadata_version,
+        "Projection Status version does not match the skill metadata version",
+    )
+    require(
+        f"- Version: {metadata_version}" in local_manifest_path.read_text(encoding="utf-8"),
+        "Collector Manifest version does not match the skill metadata version",
     )
     require(status.get("state") == "ok", f"Projection Status is {status.get('state')!r}")
 
@@ -344,6 +381,7 @@ def main() -> int:
     receipt = {
         "verified_at": runtime.isoformat(dt.datetime.now(dt.UTC)),
         "result": "failed" if failures else "passed",
+        "collector_version": metadata_version,
         "owner_id": args.expected_owner_id,
         "computer_name": config.get("computer_name"),
         "source_folder": str(source_folder),

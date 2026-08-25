@@ -429,6 +429,9 @@ class ProjectionTests(unittest.TestCase):
         status = json.loads(self.collector.status_path.read_text())
         self.assertEqual(status["state"], "action_required")
         self.assertEqual(status["condition"], "fulcra-owner-changed")
+        self.assertEqual(
+            status["collector_version"], collector_module.COLLECTOR_VERSION
+        )
 
 
 class StatusTests(unittest.TestCase):
@@ -469,6 +472,9 @@ class ManifestTests(unittest.TestCase):
         ):
             self.assertIn(heading, active)
         self.assertIn("Codex/A%2FB Mac/", active)
+        self.assertIn(
+            f"- Version: {collector_module.COLLECTOR_VERSION}", active
+        )
         self.assertNotIn("last successful", active.lower())
         self.assertIn("Collection has ended", ended)
         self.assertIn("retained", ended.lower())

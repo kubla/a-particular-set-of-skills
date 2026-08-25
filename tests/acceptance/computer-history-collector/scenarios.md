@@ -37,10 +37,11 @@ After installing against an explicitly approved owner account, run the read-only
 ```bash
 uv run --script tests/acceptance/computer-history-collector/scripts/verify_release_install.py \
   --expected-owner-id "<Fulcra user ID>" \
+  --expected-collector-version "<released skill version>" \
   --receipt ".acceptance-runs/computer-history-collector/<run>/verification.json"
 ```
 
-The verifier checks the installed and managed runtimes, local configuration, Projection Map and Status, launchd registration, every stable source-to-record mapping, projected-note hashes, producer sources, exact computer/application tags, absence of cadence tags, representative source files, and the Collector Manifest. It reports only IDs, hashes, counts, paths, and failures; it does not print annotation contents, account details, or credentials.
+The verifier checks the released skill version across its metadata, managed runtime, local configuration, Projection Status, and Collector Manifest. It also checks launchd registration, every stable source-to-record mapping, projected-note hashes, producer sources, exact computer/application tags, absence of cadence tags, and representative source files. It reports only versions, IDs, hashes, counts, paths, and failures; it does not print annotation contents, account details, or credentials.
 
 ## Scheduler
 

@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 COLLECTOR_NAME = "Computer History Collector"
+COLLECTOR_VERSION = "0.2.0"
 RUNTIME_SLUG = "computer-history-collector"
 LAUNCHD_LABEL = "com.fulcradynamics.computer-history-collector"
 MANIFEST_DIRECTORY = "Collector Manifests/Computer History Collector"
@@ -602,6 +603,7 @@ def manifest_markdown(config: dict[str, Any], ended_at: str | None = None) -> st
     return f"""# Collector
 
 - Name: {COLLECTOR_NAME}
+- Version: {config.get("collector_version", COLLECTOR_VERSION)}
 - Instance: {config["computer_name"]}
 - State: {state}{ended}
 
@@ -674,6 +676,7 @@ class Collector:
             previous.get("condition") if isinstance(previous, dict) else None
         )
         status = {
+            "collector_version": COLLECTOR_VERSION,
             "state": state,
             "message": message,
             "condition": condition,
@@ -962,6 +965,7 @@ def setup(args: argparse.Namespace) -> int:
         **(prior if isinstance(prior, dict) else {}),
         "version": 1,
         "collector": COLLECTOR_NAME,
+        "collector_version": COLLECTOR_VERSION,
         "computer_name": machine,
         "source_folder": str(source_folder),
         "fulcra_user_id": user_id,
@@ -976,7 +980,7 @@ def setup(args: argparse.Namespace) -> int:
     counts = collector.sweep(notify=False, minimum_age_seconds=args.minimum_age_seconds)
     if not args.no_launchd:
         install_launch_agent(state_dir, resolved_uv)
-    print(f"Computer History Collector is configured for {machine}.")
+    print(f"Computer History Collector {COLLECTOR_VERSION} is configured for {machine}.")
     print(f"Fulcra owner: {user_id}")
     print(
         f"Initial sweep: {counts['created']} created, {counts['revised']} revised, {counts['unchanged']} unchanged, {counts['deferred']} deferred."
@@ -1049,6 +1053,7 @@ def command_status(_args: argparse.Namespace) -> int:
     if not isinstance(status, dict):
         print("Computer History Collector has no Projection Status. Run setup.")
         return 1
+    print(f"Version: {status.get('collector_version', COLLECTOR_VERSION)}")
     print(f"State: {status.get('state', 'unknown')}")
     print(f"Checked: {status.get('checked_at', 'unknown')}")
     print(f"Message: {status.get('message', '')}")

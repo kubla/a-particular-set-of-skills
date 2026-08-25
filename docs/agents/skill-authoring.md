@@ -12,6 +12,12 @@ Every `SKILL.md` must declare:
 compatibility: Requires uv and network access.
 ```
 
+## Releases
+
+Version each independently distributable skill with Semantic Versioning. Put its version in `SKILL.md` as `metadata.version`, and create an annotated, skill-namespaced Git tag such as `<skill-name>-v1.2.3` for every release. A repository commit may therefore release one skill without incrementing its siblings.
+
+Treat runtime/configuration format versions as separate schemas. Do not infer a skill release from an integer such as `"version": 1` in a configuration file or Projection Map.
+
 Perform every Fulcra operation through:
 
 ```bash
