@@ -108,14 +108,23 @@ class FailingCLI(FakeCLI):
 class SummaryParsingTests(unittest.TestCase):
     def test_known_helper_bundle_ids_have_human_readable_names(self):
         self.assertEqual(
-            collector_module.resolve_application_name("com.apple.dock.helper"),
+            collector_module.application_tag_name("com.apple.dock.helper"),
             "Dock Helper",
         )
         self.assertEqual(
-            collector_module.resolve_application_name(
+            collector_module.application_tag_name(
                 "com.apple.appkit.xpc.openAndSavePanelService"
             ),
             "Open and Save Panel",
+        )
+
+    def test_record_tag_names_preserve_order_and_remove_label_collisions(self):
+        self.assertEqual(
+            collector_module.record_tag_names(
+                "Test Mac",
+                ("com.apple.UserNotificationCenter", "com.apple.notificationcenterui"),
+            ),
+            ["Test Mac", "Notification Center"],
         )
 
     def test_preserves_source_and_projects_without_citations(self):
@@ -297,6 +306,31 @@ class ProjectionTests(unittest.TestCase):
         )
         projection_map = json.loads(self.collector.map_path.read_text())
         self.assertEqual(projection_map["files"][path.name]["record_id"], record["id"])
+
+    def test_preview_and_first_sweep_use_the_same_tag_names(self):
+        path = self.add_summary()
+        preview = collector_module.projection_preview(
+            collector_module.parse_summary(path), "Test Mac"
+        )
+
+        self.collector.sweep(notify=False, minimum_age_seconds=0)
+
+        self.assertEqual(self.cli.records[0][2], preview["tag_names"])
+
+    def test_sweep_migrates_legacy_application_name_cache(self):
+        config = json.loads(self.collector.config_path.read_text())
+        config["application_names"] = {"com.openai.codex": "Codex Legacy"}
+        collector_module.atomic_json(self.collector.config_path, config)
+        self.add_summary()
+
+        self.collector.sweep(notify=False, minimum_age_seconds=0)
+
+        migrated = json.loads(self.collector.config_path.read_text())
+        self.assertNotIn("application_names", migrated)
+        self.assertEqual(
+            migrated["application_tag_names"]["com.openai.codex"], "Codex Legacy"
+        )
+        self.assertEqual(self.cli.records[0][2], ["Test Mac", "Codex Legacy", "Safari"])
 
     def test_second_sweep_is_idempotent(self):
         self.add_summary()

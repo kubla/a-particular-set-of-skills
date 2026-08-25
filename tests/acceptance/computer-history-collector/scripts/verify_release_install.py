@@ -128,6 +128,7 @@ def main() -> int:
         description="Verify an installed collector, scheduler, and Fulcra projection."
     )
     parser.add_argument("--expected-owner-id", required=True)
+    parser.add_argument("--skill-dir", type=Path, default=INSTALLED_SKILL)
     parser.add_argument("--receipt", type=Path)
     args = parser.parse_args()
 
@@ -137,13 +138,14 @@ def main() -> int:
         if not condition:
             failures.append(message)
 
-    installed_script = INSTALLED_SKILL / "scripts" / "computer_history_collector.py"
+    skill_dir = args.skill_dir.expanduser().resolve()
+    installed_script = skill_dir / "scripts" / "computer_history_collector.py"
     runtime_script = STATE_DIR / "lib" / "computer_history_collector.py"
     config_path = STATE_DIR / "config.json"
     map_path = STATE_DIR / "projection-map.json"
     status_path = STATE_DIR / "status.json"
     for path in (
-        INSTALLED_SKILL / "SKILL.md",
+        skill_dir / "SKILL.md",
         installed_script,
         runtime_script,
         config_path,
@@ -289,12 +291,14 @@ def main() -> int:
                 f"Producer sources differ for {summary.filename}",
             )
             expected_tags = {str(config.get("computer_name"))}
-            application_names = config.get("application_names", {})
+            application_tag_names = config.get(
+                "application_tag_names", config.get("application_names", {})
+            )
             for bundle_id in summary.applications:
                 expected_tags.add(
                     str(
-                        application_names.get(bundle_id)
-                        or runtime.resolve_application_name(bundle_id)
+                        application_tag_names.get(bundle_id)
+                        or runtime.application_tag_name(bundle_id)
                     )
                 )
             actual_tags = {
@@ -349,6 +353,7 @@ def main() -> int:
         "catalog_tags_resolved": len(tag_names_by_id),
         "sampled_source_files": sampled_files,
         "collector_manifest": manifest_path,
+        "skill_dir": str(skill_dir),
         "projection_status": status.get("state"),
         "launchd_loaded": launchctl.returncode == 0,
         "runtime_sha256": sha256(runtime_script),

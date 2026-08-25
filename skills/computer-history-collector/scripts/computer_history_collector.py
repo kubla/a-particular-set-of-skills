@@ -22,7 +22,7 @@ import sys
 import tempfile
 import urllib.parse
 import uuid
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -470,7 +470,7 @@ def split_words(value: str) -> str:
     )
 
 
-def resolve_application_name(bundle_id: str) -> str:
+def application_tag_name(bundle_id: str) -> str:
     if bundle_id in KNOWN_APPS:
         return KNOWN_APPS[bundle_id]
     query = f"kMDItemCFBundleIdentifier == '{bundle_id.replace(chr(39), chr(92) + chr(39))}'"
@@ -496,6 +496,25 @@ def resolve_application_name(bundle_id: str) -> str:
     ):
         return split_words(tail)
     return bundle_id
+
+
+def record_tag_names(
+    computer: str,
+    applications: Iterable[str],
+    cached_application_tag_names: Mapping[str, str] | None = None,
+) -> list[str]:
+    tags = [computer]
+    for bundle_id in applications:
+        if (
+            cached_application_tag_names is not None
+            and bundle_id in cached_application_tag_names
+        ):
+            tag = cached_application_tag_names[bundle_id]
+        else:
+            tag = application_tag_name(bundle_id)
+        if tag not in tags:
+            tags.append(tag)
+    return tags
 
 
 def stable_record_id(
@@ -527,13 +546,7 @@ def projection_preview(summary: Summary, computer: str) -> dict[str, Any]:
             },
             "note": summary.projected_note,
         },
-        "tag_names": [
-            computer,
-            *(
-                resolve_application_name(bundle_id)
-                for bundle_id in summary.applications
-            ),
-        ],
+        "tag_names": record_tag_names(computer, summary.applications),
         "collector_sources": list(source_names(computer)),
     }
 
@@ -603,7 +616,7 @@ def manifest_markdown(config: dict[str, Any], ended_at: str | None = None) -> st
 - Fulcra Files beneath `Codex/{remote_component(config["computer_name"])}/memories/extensions/skysight/resources/`.
 - Duration annotations in `Computer History (10-minute)` and `Computer History (6-hour)`.
 - Files preserve each completed Markdown summary unchanged; annotation notes omit its terminal Citations section.
-- Tags identify the computer and contributing applications.
+- Tags identify the computer and applications listed in the summary metadata.
 - Timeline records and source files are independently permissionable and are not directly linked.
 
 # Collection behavior
@@ -746,8 +759,29 @@ class Collector:
             "unchanged": 0,
             "deferred": 0,
         }
-        app_names = config.setdefault("application_names", {})
         config_changed = False
+        legacy_application_names = config.pop("application_names", None)
+        application_tag_names = config.get("application_tag_names")
+        if application_tag_names is None:
+            application_tag_names = {}
+            config["application_tag_names"] = application_tag_names
+            config_changed = True
+        if not isinstance(application_tag_names, dict):
+            raise CollectorError(
+                "Application tag name cache has an unsupported format.",
+                condition="collector-config-invalid",
+                action_required=True,
+            )
+        if legacy_application_names is not None:
+            if not isinstance(legacy_application_names, dict):
+                raise CollectorError(
+                    "Legacy application name cache has an unsupported format.",
+                    condition="collector-config-invalid",
+                    action_required=True,
+                )
+            for bundle_id, tag_name in legacy_application_names.items():
+                application_tag_names.setdefault(bundle_id, tag_name)
+            config_changed = True
         for path in candidates:
             before = path.stat()
             if now_timestamp - before.st_mtime < minimum_age_seconds:
@@ -766,8 +800,8 @@ class Collector:
                 counts["unchanged"] += 1
                 continue
             for bundle_id in summary.applications:
-                if bundle_id not in app_names:
-                    app_names[bundle_id] = resolve_application_name(bundle_id)
+                if bundle_id not in application_tag_names:
+                    application_tag_names[bundle_id] = application_tag_name(bundle_id)
                     config_changed = True
             remote_path = (
                 f"Codex/{remote_component(config['computer_name'])}/memories/extensions/skysight/resources/"
@@ -784,8 +818,11 @@ class Collector:
                 },
                 "note": summary.projected_note,
             }
-            tags = [config["computer_name"]]
-            tags.extend(app_names[bundle_id] for bundle_id in summary.applications)
+            tags = record_tag_names(
+                config["computer_name"],
+                summary.applications,
+                application_tag_names,
+            )
             self.cli.upload_file(path, remote_path)
             self.cli.record(
                 config["data_types"][summary.kind],
