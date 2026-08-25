@@ -4,15 +4,11 @@ If you already use Codex Computer History, Codex is writing compact summaries of
 
 > **Agents can't volunteer for work they can't see.**
 
-This skill grew out of simple curiosity about what Computer History was saving. It's more than a simple log; for instance, at the time I'm writing this (2026-August-28), each file has a section delightfully named
+This skill grew out of simple curiosity about what Computer History was saving. It's more than a simple log; for instance, at the time I'm writing this (2026-August-28), each file has a section delightfully named `### Important non-obvious context about the user`
 
-```markdown
-### Important non-obvious context about the user
-```
+In my corpus of Codex Computer History memory files, this is where Codex records inferences about me that might matter later.
 
-In my corpus of Codex Computer History memory files, this is where Codex recorded inferences about me that might matter later.
-
-One real six-hour summary included this observation:
+One six-hour summary included this observation:
 
 > A key design gap surfaced during review: the guide may need an explicit maintenance or curation pattern and a worked composition example combining several patterns.
 
