@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 import sys
 import unittest
 from pathlib import Path
 
 SCRIPT = Path(__file__).parents[1] / "scripts" / "image_upgrade_protocol.py"
 VALID_ROUND_TRIP = Path(__file__).parents[1] / "references" / "valid-round-trip.json"
+SETUP_CASES = Path(__file__).parents[1] / "references" / "setup-cases.json"
 SPEC = importlib.util.spec_from_file_location("image_upgrade_protocol", SCRIPT)
 protocol = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
@@ -111,6 +113,140 @@ class ConfigurationTests(unittest.TestCase):
                 contribution_data_type=REQUEST_TYPE,
                 trusted_artifact_hosts=[],
             )
+
+
+class SetupReconciliationTests(unittest.TestCase):
+    def pair(self):
+        return [
+            {"id": REQUEST_TYPE, "name": "Image Upgrade Request"},
+            {
+                "id": CONTRIBUTION_TYPE,
+                "name": "Image Upgrade Contribution",
+            },
+        ]
+
+    def test_empty_owner_state_requires_one_new_pair(self):
+        decision = protocol.reconcile_setup(configuration_value=None, catalog=[])
+
+        self.assertEqual(decision.action, "create_pair")
+        self.assertIsNone(decision.configuration)
+        self.assertEqual(decision.observed["request_type_ids"], [])
+        self.assertIn("Create one Request type", decision.change)
+
+    def test_one_compatible_pair_is_adopted(self):
+        decision = protocol.reconcile_setup(
+            configuration_value=None,
+            catalog=self.pair(),
+        )
+
+        self.assertEqual(decision.action, "adopt_pair")
+        self.assertEqual(
+            decision.configuration,
+            {
+                "protocol": "image-upgrade/v1",
+                "request_data_type": REQUEST_TYPE,
+                "contribution_data_type": CONTRIBUTION_TYPE,
+                "trusted_artifact_hosts": [],
+            },
+        )
+
+    def test_partial_or_duplicate_state_stops_with_identifiers(self):
+        with self.assertRaisesRegex(protocol.ProtocolError, REQUEST_TYPE):
+            protocol.reconcile_setup(
+                configuration_value=None,
+                catalog=self.pair()[:1],
+            )
+        with self.assertRaisesRegex(protocol.ProtocolError, "duplicate"):
+            protocol.reconcile_setup(
+                configuration_value=None,
+                catalog=[*self.pair(), self.pair()[0]],
+            )
+
+    def test_configured_pair_is_verified_without_replacement(self):
+        configured = protocol.configuration(
+            request_data_type=REQUEST_TYPE,
+            contribution_data_type=CONTRIBUTION_TYPE,
+            trusted_artifact_hosts=[],
+        )
+
+        decision = protocol.reconcile_setup(
+            configuration_value=configured,
+            catalog=self.pair(),
+        )
+
+        self.assertEqual(decision.action, "verified")
+        self.assertEqual(decision.configuration, configured)
+        self.assertEqual(decision.change, "No setup mutation.")
+
+    def test_missing_or_role_incompatible_configured_type_stops(self):
+        configured = protocol.configuration(
+            request_data_type=REQUEST_TYPE,
+            contribution_data_type=CONTRIBUTION_TYPE,
+            trusted_artifact_hosts=[],
+        )
+        with self.assertRaisesRegex(protocol.ProtocolError, CONTRIBUTION_TYPE):
+            protocol.reconcile_setup(
+                configuration_value=configured,
+                catalog=self.pair()[:1],
+            )
+        with self.assertRaisesRegex(protocol.ProtocolError, "Image Upgrade Request"):
+            protocol.reconcile_setup(
+                configuration_value=configured,
+                catalog=[
+                    {"id": REQUEST_TYPE, "name": "Image Upgrade Contribution"},
+                    self.pair()[1],
+                ],
+            )
+
+    def test_setup_decision_command_reads_observed_state_from_stdin(self):
+        completed = subprocess.run(
+            [sys.executable, str(SCRIPT), "setup-decision"],
+            input=json.dumps(
+                {
+                    "configuration": None,
+                    "catalog": self.pair(),
+                }
+            ),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(json.loads(completed.stdout)["action"], "adopt_pair")
+
+    def test_setup_command_requires_confirmed_configuration_and_catalog_reads(self):
+        completed = subprocess.run(
+            [sys.executable, str(SCRIPT), "setup-decision"],
+            input="{}",
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 2)
+        self.assertIn("configuration", completed.stderr)
+        self.assertIn("catalog", completed.stderr)
+
+    def test_packaged_setup_cases_cover_every_reconciliation_outcome(self):
+        cases = json.loads(SETUP_CASES.read_text(encoding="utf-8"))
+
+        for case in cases:
+            with self.subTest(case=case["name"]):
+                if "expected_action" in case:
+                    decision = protocol.reconcile_setup(
+                        configuration_value=case["configuration"],
+                        catalog=case["catalog"],
+                    )
+                    self.assertEqual(decision.action, case["expected_action"])
+                else:
+                    with self.assertRaisesRegex(
+                        protocol.ProtocolError, case["expected_error"]
+                    ):
+                        protocol.reconcile_setup(
+                            configuration_value=case["configuration"],
+                            catalog=case["catalog"],
+                        )
 
 class ContributionEnvelopeTests(unittest.TestCase):
     def test_valid_contribution_is_canonicalized(self):

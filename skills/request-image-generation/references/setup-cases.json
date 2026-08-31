@@ -1,0 +1,109 @@
+[
+  {
+    "name": "confirmed empty owner state",
+    "configuration": null,
+    "catalog": [],
+    "expected_action": "create_pair"
+  },
+  {
+    "name": "one compatible pair without configuration",
+    "configuration": null,
+    "catalog": [
+      {
+        "id": "MomentAnnotation/33333333-3333-4333-8333-333333333333",
+        "name": "Image Upgrade Request"
+      },
+      {
+        "id": "MomentAnnotation/44444444-4444-4444-8444-444444444444",
+        "name": "Image Upgrade Contribution"
+      }
+    ],
+    "expected_action": "adopt_pair"
+  },
+  {
+    "name": "partial pair",
+    "configuration": null,
+    "catalog": [
+      {
+        "id": "MomentAnnotation/33333333-3333-4333-8333-333333333333",
+        "name": "Image Upgrade Request"
+      }
+    ],
+    "expected_error": "partial"
+  },
+  {
+    "name": "duplicate request types",
+    "configuration": null,
+    "catalog": [
+      {
+        "id": "MomentAnnotation/33333333-3333-4333-8333-333333333333",
+        "name": "Image Upgrade Request"
+      },
+      {
+        "id": "MomentAnnotation/66666666-6666-4666-8666-666666666666",
+        "name": "Image Upgrade Request"
+      },
+      {
+        "id": "MomentAnnotation/44444444-4444-4444-8444-444444444444",
+        "name": "Image Upgrade Contribution"
+      }
+    ],
+    "expected_error": "duplicate"
+  },
+  {
+    "name": "configured pair verifies on rerun",
+    "configuration": {
+      "protocol": "image-upgrade/v1",
+      "request_data_type": "MomentAnnotation/33333333-3333-4333-8333-333333333333",
+      "contribution_data_type": "MomentAnnotation/44444444-4444-4444-8444-444444444444",
+      "trusted_artifact_hosts": []
+    },
+    "catalog": [
+      {
+        "id": "MomentAnnotation/33333333-3333-4333-8333-333333333333",
+        "name": "Image Upgrade Request"
+      },
+      {
+        "id": "MomentAnnotation/44444444-4444-4444-8444-444444444444",
+        "name": "Image Upgrade Contribution"
+      }
+    ],
+    "expected_action": "verified"
+  },
+  {
+    "name": "configured contribution type is missing",
+    "configuration": {
+      "protocol": "image-upgrade/v1",
+      "request_data_type": "MomentAnnotation/33333333-3333-4333-8333-333333333333",
+      "contribution_data_type": "MomentAnnotation/44444444-4444-4444-8444-444444444444",
+      "trusted_artifact_hosts": []
+    },
+    "catalog": [
+      {
+        "id": "MomentAnnotation/33333333-3333-4333-8333-333333333333",
+        "name": "Image Upgrade Request"
+      }
+    ],
+    "expected_error": "missing"
+  },
+  {
+    "name": "configured request type has the wrong role",
+    "configuration": {
+      "protocol": "image-upgrade/v1",
+      "request_data_type": "MomentAnnotation/33333333-3333-4333-8333-333333333333",
+      "contribution_data_type": "MomentAnnotation/44444444-4444-4444-8444-444444444444",
+      "trusted_artifact_hosts": []
+    },
+    "catalog": [
+      {
+        "id": "MomentAnnotation/33333333-3333-4333-8333-333333333333",
+        "name": "Image Upgrade Contribution"
+      },
+      {
+        "id": "MomentAnnotation/44444444-4444-4444-8444-444444444444",
+        "name": "Image Upgrade Contribution"
+      }
+    ],
+    "expected_error": "incompatible"
+  }
+]

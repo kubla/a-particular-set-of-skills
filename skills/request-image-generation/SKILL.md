@@ -16,7 +16,7 @@ If the Fulcra MCP operations are unavailable or unauthenticated, stop before rea
 
 ## Set up
 
-Read the canonical Image Upgrade Configuration through Fulcra MCP and verify its referenced data types. When configuration is absent, follow the conservative setup table in the protocol reference. Create or adopt state only when the result is unambiguous.
+Read [setup.md](references/setup.md). Read the canonical Image Upgrade Configuration through Fulcra MCP and verify its referenced data types. When configuration is absent, create or adopt state only when the observed owner state is unambiguous.
 
 If setup creates the configuration before a producer is ready, write an empty `trusted_artifact_hosts` list. Report that coordination is ready and artifact delivery still needs producer setup.
 

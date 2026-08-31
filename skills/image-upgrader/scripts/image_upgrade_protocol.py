@@ -6,17 +6,30 @@
 
 from __future__ import annotations
 
+import argparse
+import dataclasses
 import json
+import sys
 import uuid
 from collections.abc import Iterable, Mapping
 from typing import Any
 from urllib.parse import urlparse
 
 PROTOCOL = "image-upgrade/v1"
+REQUEST_TYPE_NAME = "Image Upgrade Request"
+CONTRIBUTION_TYPE_NAME = "Image Upgrade Contribution"
 
 
 class ProtocolError(ValueError):
     """The supplied value is not valid for the supported protocol."""
+
+
+@dataclasses.dataclass(frozen=True)
+class SetupDecision:
+    action: str
+    configuration: dict[str, Any] | None
+    observed: dict[str, Any]
+    change: str
 
 
 def _canonical_request_id(value: str) -> str:
@@ -66,6 +79,96 @@ def configuration(
         "contribution_data_type": contribution_type,
         "trusted_artifact_hosts": hosts,
     }
+
+
+def validate_configuration(value: Mapping[str, Any]) -> dict[str, Any]:
+    if not isinstance(value, Mapping) or value.get("protocol") != PROTOCOL:
+        raise ProtocolError(f"configuration must use protocol {PROTOCOL}")
+    unknown = set(value) - {
+        "protocol",
+        "request_data_type",
+        "contribution_data_type",
+        "trusted_artifact_hosts",
+    }
+    if unknown:
+        raise ProtocolError(
+            f"configuration contains unsupported fields: {', '.join(sorted(unknown))}"
+        )
+    return configuration(
+        request_data_type=value.get("request_data_type"),
+        contribution_data_type=value.get("contribution_data_type"),
+        trusted_artifact_hosts=value.get("trusted_artifact_hosts"),
+    )
+
+
+def reconcile_setup(
+    *,
+    configuration_value: Mapping[str, Any] | None,
+    catalog: Iterable[Mapping[str, Any]],
+) -> SetupDecision:
+    """Choose the single safe setup action from observed owner state."""
+
+    entries = list(catalog)
+    requests = [entry for entry in entries if entry.get("name") == REQUEST_TYPE_NAME]
+    contributions = [
+        entry for entry in entries if entry.get("name") == CONTRIBUTION_TYPE_NAME
+    ]
+    observed = {
+        "configuration_present": configuration_value is not None,
+        "request_type_ids": [entry.get("id") for entry in requests],
+        "contribution_type_ids": [entry.get("id") for entry in contributions],
+    }
+    if configuration_value is None and not requests and not contributions:
+        return SetupDecision(
+            action="create_pair",
+            configuration=None,
+            observed=observed,
+            change="Create one Request type and one Contribution type, then write configuration.",
+        )
+    if configuration_value is None and len(requests) == len(contributions) == 1:
+        adopted = configuration(
+            request_data_type=requests[0].get("id"),
+            contribution_data_type=contributions[0].get("id"),
+            trusted_artifact_hosts=[],
+        )
+        return SetupDecision(
+            action="adopt_pair",
+            configuration=adopted,
+            observed=observed,
+            change="Write configuration adopting the observed compatible type pair.",
+        )
+    if configuration_value is None:
+        observed = [str(entry.get("id")) for entry in [*requests, *contributions]]
+        if len(requests) > 1 or len(contributions) > 1:
+            raise ProtocolError(
+                f"duplicate Image Upgrade types require explicit repair: {observed}"
+            )
+        raise ProtocolError(
+            f"partial Image Upgrade type pair requires explicit repair: {observed}"
+        )
+
+    configured = validate_configuration(configuration_value)
+    by_id = {entry.get("id"): entry for entry in entries}
+    required = (
+        (configured["request_data_type"], REQUEST_TYPE_NAME),
+        (configured["contribution_data_type"], CONTRIBUTION_TYPE_NAME),
+    )
+    for identifier, expected_name in required:
+        entry = by_id.get(identifier)
+        if entry is None:
+            raise ProtocolError(f"configured data type is missing: {identifier}")
+        if entry.get("name") != expected_name:
+            raise ProtocolError(
+                f"configured {expected_name} has incompatible name: "
+                f"{entry.get('name')!r} ({identifier})"
+            )
+        _moment_annotation_id(identifier)
+    return SetupDecision(
+        action="verified",
+        configuration=configured,
+        observed=observed,
+        change="No setup mutation.",
+    )
 
 
 def request_envelope(
@@ -228,3 +331,54 @@ def request_receipt(
         "created_at": created_at.strip(),
         "brief_summary": brief_summary.strip(),
     }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "operation",
+        choices=("setup-decision", "catalog-json", "owner-id"),
+        help="Deterministic protocol operation to perform from JSON stdin.",
+    )
+    args = parser.parse_args(argv)
+    try:
+        if args.operation == "setup-decision":
+            value = json.load(sys.stdin)
+            if not isinstance(value, Mapping):
+                raise ProtocolError("stdin must contain a JSON object")
+            missing = {"configuration", "catalog"} - set(value)
+            if missing:
+                raise ProtocolError(
+                    f"setup observation is missing: {', '.join(sorted(missing))}"
+                )
+            if not isinstance(value["catalog"], list):
+                raise ProtocolError("catalog observation must be an array")
+            decision = reconcile_setup(
+                configuration_value=value["configuration"],
+                catalog=value["catalog"],
+            )
+            json.dump(dataclasses.asdict(decision), sys.stdout, separators=(",", ":"))
+            sys.stdout.write("\n")
+            return 0
+        if args.operation == "catalog-json":
+            entries = [json.loads(line) for line in sys.stdin if line.strip()]
+            json.dump(entries, sys.stdout, separators=(",", ":"))
+            sys.stdout.write("\n")
+            return 0
+        if args.operation == "owner-id":
+            value = json.load(sys.stdin)
+            if not isinstance(value, Mapping) or not isinstance(
+                value.get("userid"), str
+            ):
+                raise ProtocolError("user information does not contain userid")
+            json.dump({"userid": value["userid"]}, sys.stdout, separators=(",", ":"))
+            sys.stdout.write("\n")
+            return 0
+    except (json.JSONDecodeError, ProtocolError) as error:
+        print(str(error), file=sys.stderr)
+        return 2
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

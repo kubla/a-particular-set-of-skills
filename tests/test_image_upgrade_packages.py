@@ -39,6 +39,20 @@ class ImageUpgradePackageTests(unittest.TestCase):
 
         self.assertEqual(requester, producer)
 
+    def test_sibling_skills_ship_the_same_setup_cases(self):
+        producer = (
+            ROOT / "skills" / "image-upgrader" / "references" / "setup-cases.json"
+        ).read_bytes()
+        requester = (
+            ROOT
+            / "skills"
+            / "request-image-generation"
+            / "references"
+            / "setup-cases.json"
+        ).read_bytes()
+
+        self.assertEqual(requester, producer)
+
 
 if __name__ == "__main__":
     unittest.main()

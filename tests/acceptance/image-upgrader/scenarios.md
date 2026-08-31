@@ -1,5 +1,28 @@
 # Image Upgrader acceptance
 
+## Producer-first setup and conservative rerun
+
+**Entry prompts**
+
+1. `Use $image-upgrader to set up Image Upgrade coordination in this confirmed-empty Fulcra owner.`
+2. `Use $image-upgrader to verify the existing Image Upgrade setup without replacing anything.`
+
+**Preconditions**
+
+- The first run uses an owner or isolated test state with a confirmed-absent canonical configuration and no matching role types.
+- Separate seeded runs expose exactly one compatible pair, a partial pair, duplicate role types, a missing configured type, and a configured type with the wrong role name.
+
+**Observable outcome**
+
+- Empty state creates one separate type per role and one configuration with an empty trusted-host list.
+- The immediate rerun reports `verified` and makes no setup mutation.
+- One compatible pair is adopted. Every partial, duplicate, missing, or incompatible state stops and reports observed identifiers plus required repair.
+
+**Mutations, approval gates, cleanup, and evidence**
+
+- Verify the owner before mutations. Record created types and configuration immediately, then remove only scenario-created state after its convergence check.
+- Preserve the full observed input, setup action or error, exact writes, verification read, and cleanup result.
+
 ## Discover and contribute to one text-only Request
 
 **Entry prompt**

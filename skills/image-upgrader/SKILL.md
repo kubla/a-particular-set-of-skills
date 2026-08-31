@@ -20,7 +20,7 @@ If the CLI is unavailable, run the documented `uvx` form rather than relying on 
 
 ## Set up
 
-Read the canonical Image Upgrade Configuration from Fulcra and verify its referenced data types. When configuration is absent, follow the conservative setup table in the protocol reference. Create or adopt state only when the result is unambiguous.
+Read [setup.md](references/setup.md). Read the canonical Image Upgrade Configuration from Fulcra and verify its referenced data types. When configuration is absent, create or adopt state only when the deterministic setup decision is unambiguous.
 
 ## Discover Requests
 
