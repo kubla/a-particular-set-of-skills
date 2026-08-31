@@ -58,3 +58,39 @@
 **Required evidence**
 
 - Host and Fulcra MCP interface, owner ID, prompts sent, responses received, exact Request receipt, observed Fulcra records, representation verification, and cleanup status.
+
+## Multiple Contributions and conservative retrieval
+
+**Entry prompt**
+
+`Use $request-image-generation to check request <exact request_id> and report every candidate image with its verification state.`
+
+**Preconditions**
+
+- Seed a malformed Contribution followed by two valid exact matches and one valid Contribution for another Request.
+- Use the expected owner, a unique run identifier, and Claude with authenticated Fulcra MCP plus a host retrieval facility capable of exposing final URL, media type, and bytes.
+
+**Fulcra interface and host**
+
+- MCP-backed Request Image Generation in the named Claude product and version used for the run.
+
+**Observable outcome**
+
+- The agent reports the malformed record, ignores the unrelated record, and returns both exact matches in recorded order with timestamp and provenance.
+- A trusted final host with matching media type and digest is verified. An untrusted final host requires approval. Digest or media-type mismatch remains unaccepted.
+
+**Mutations**
+
+- Scenario setup records the seeded Contributions; the check itself creates no mutation.
+
+**Approval gates**
+
+- Verify the expected owner before seeding. Obtain user approval before downloading from an untrusted final host.
+
+**Cleanup**
+
+- Record seeded records in the cleanup manifest as created and remove them in reverse order after the check.
+
+**Required evidence**
+
+- Run identifier, host/runtime, owner ID, prompt and response, complete query observation, parse results, approval event if any, retrieval metadata, computed digest, rendered or unrendered presentation state, and cleanup status.

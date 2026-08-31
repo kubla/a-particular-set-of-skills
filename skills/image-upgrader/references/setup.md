@@ -39,4 +39,6 @@ Use this procedure only for setup or repair.
 
 7. After `create_pair` or `adopt_pair`, read the configuration and complete catalog again, run `setup-decision` on those post-write observations, and require `verified`. Report the exact created or adopted type identifiers, configuration written, and verification result. If creation stops after a partial mutation, report the confirmed identifier and require explicit repair.
 
+8. When coordination is verified, follow the publication canary in [contribute.md](contribute.md). Setup is coordination-ready with an empty trusted-host list, but producer-ready only after a canary verifies and records the publisher's final host.
+
 Report the initial helper `observed`, `action`, and intended `change`, then the exact mutations actually observed and the post-write verification. For errors, report the observed identifiers and required repair. Any helper error is a stop; repair owner state only after an explicit user decision. The packaged [setup cases](setup-cases.json) are the shared decision interface for both sibling skills.

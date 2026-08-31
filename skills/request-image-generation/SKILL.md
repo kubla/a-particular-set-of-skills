@@ -34,6 +34,8 @@ End after the receipt. Creation does not check for Contributions and does not im
 
 Require the exact `request_id` from the Request receipt or caller-maintained state. If it is unavailable, stop and offer historical Request recovery as a separate operation.
 
+Read [check-contributions.md](references/check-contributions.md) and follow its MCP-only discovery and verification procedure.
+
 Query the configured Contribution data type from the Request's creation time. Parse only `image-upgrade/v1` notes and keep exact `request_id` matches in recorded order. Report malformed or unsupported records separately and continue with valid records.
 
 For each match, report its summary, Fetchable Representations, Fulcra timestamp, provenance, and observed verification state. Automatically retrieve a representation only when its final HTTPS host appears in `trusted_artifact_hosts`; otherwise obtain explicit user approval. Accept retrieved bytes only after their SHA-256 digest matches.

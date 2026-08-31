@@ -55,3 +55,39 @@
 **Required evidence**
 
 - Host, resolved `fulcra-api` and `uv` versions, owner ID, prompt sent, Request observed, generation result, published bytes and digest, Contribution observed, provenance, and cleanup status.
+
+## Open Contributions and publisher canary
+
+**Entry prompt**
+
+`Use $image-upgrader to inspect the seeded Requests and Contributions, verify this authorized publishing route with a canary, and add a useful candidate where appropriate.`
+
+**Preconditions**
+
+- Seed two valid Requests in recorded order, with the first already holding one valid Contribution; insert one malformed Contribution before that valid record.
+- Use the expected owner, a unique run identifier, an image-capable Codex host, the current Fulcra CLI, and an authorized test publisher whose canary may be deleted.
+
+**Fulcra interface and host**
+
+- CLI-backed Image Upgrader in Codex with the resolved `uv` and `fulcra-api` versions recorded.
+
+**Observable outcome**
+
+- The agent reports the malformed record, prioritizes the unanswered Request, and still sees the later valid Contribution. It may add a candidate to the answered Request only after explaining the distinct value.
+- The canary's final HTTPS host, media type, and digest verify before the host enters owner configuration. A redirected untrusted host requires approval; wrong media type or digest remains unaccepted even after approval.
+
+**Mutations**
+
+- Seeded Requests and Contributions, one canary, one configuration revision, published candidates, and their Contribution records.
+
+**Approval gates**
+
+- Verify the expected owner before mutation. Obtain user approval before making a canary externally retrievable and before following any untrusted final host.
+
+**Cleanup**
+
+- Record every seeded record, canary, configuration revision, published candidate, and Contribution in the cleanup manifest when created. Remove them in reverse dependency order, including seeded records.
+
+**Required evidence**
+
+- Run identifier, host/runtime, owner ID, exact prompts and responses, discovery observations, retrieval headers, final URLs, approval events, computed digests, Fulcra record IDs and provenance, rendered state, and final cleanup status.

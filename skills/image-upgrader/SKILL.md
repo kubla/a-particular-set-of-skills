@@ -24,11 +24,13 @@ Read [setup.md](references/setup.md). Read the canonical Image Upgrade Configura
 
 ## Discover Requests
 
-Use a starting time or watermark supplied by the invoking environment. Otherwise query a bounded recent lookback and widen it only when evidence warrants doing so. Parse valid `image-upgrade/v1` Request notes and query Contributions over the same relevant period.
+Read [contribute.md](references/contribute.md). Use a starting time or watermark supplied by the invoking environment. Otherwise query a bounded recent lookback and widen it only when evidence warrants doing so. Parse valid `image-upgrade/v1` Request notes and query Contributions over the same relevant period.
 
 Prioritize Requests with no Contributions. An existing Contribution does not close a Request: contribute only when another candidate would be a distinct interpretation, useful variant, or requested revision.
 
 ## Contribute
+
+Follow [contribute.md](references/contribute.md) for deterministic discovery, representation verification, publication canary, and Contribution recording.
 
 1. Inspect the Image Brief, any input representations, and existing Contributions.
 2. Retrieve an input automatically only when its final HTTPS host is trusted and its digest matches. Obtain explicit approval for another host.

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -327,6 +329,208 @@ class ContributionEnvelopeTests(unittest.TestCase):
                 }
             )
 
+    def test_contribution_record_command_wraps_compact_note_for_fulcra(self):
+        completed = subprocess.run(
+            [sys.executable, str(SCRIPT), "contribution-record"],
+            input=json.dumps(
+                {
+                    "request_id": REQUEST_ID,
+                    "representations": [
+                        {
+                            "url": "https://assets.example/image.png",
+                            "media_type": "image/png",
+                            "sha256": "a" * 64,
+                        }
+                    ],
+                }
+            ),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        record = json.loads(completed.stdout)
+        self.assertEqual(json.loads(record["note"])["request_id"], REQUEST_ID)
+
+
+class RepresentationVerificationTests(unittest.TestCase):
+    def representation(self, content=b"known image bytes"):
+        return {
+            "url": "https://assets.example/image.png",
+            "media_type": "image/png",
+            "sha256": hashlib.sha256(content).hexdigest(),
+        }
+
+    def authorization(
+        self,
+        final_url="https://assets.example/image.png",
+        trusted_hosts=None,
+        approved=False,
+    ):
+        return protocol.authorize_retrieval(
+            candidate_url=final_url,
+            trusted_artifact_hosts=(
+                ["assets.example"] if trusted_hosts is None else trusted_hosts
+            ),
+            user_approved=approved,
+        )
+
+    def test_trusted_https_representation_with_matching_bytes_is_verified(self):
+        content = b"known image bytes"
+
+        result = protocol.verify_representation(
+            representation=self.representation(content),
+            authorization=self.authorization(),
+            observed_media_type="image/png",
+            content=content,
+        )
+
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.status, "verified")
+        self.assertEqual(result.final_host, "assets.example")
+
+    def test_untrusted_final_host_requires_approval_even_after_trusted_redirect(self):
+        result = self.authorization(
+            final_url="https://redirected.example/image.png",
+            trusted_hosts=["assets.example"],
+        )
+
+        self.assertFalse(result.allowed)
+        self.assertEqual(result.status, "approval_required")
+        self.assertEqual(result.host, "redirected.example")
+
+    def test_explicit_approval_does_not_override_digest_or_media_type(self):
+        content = b"different bytes"
+        digest_result = protocol.verify_representation(
+            representation=self.representation(),
+            authorization=self.authorization(
+                final_url="https://other.example/image.png",
+                trusted_hosts=[],
+                approved=True,
+            ),
+            observed_media_type="image/png",
+            content=content,
+        )
+        media_result = protocol.verify_representation(
+            representation=self.representation(),
+            authorization=self.authorization(
+                final_url="https://other.example/image.png",
+                trusted_hosts=[],
+                approved=True,
+            ),
+            observed_media_type="text/html",
+            content=b"known image bytes",
+        )
+
+        self.assertEqual(digest_result.status, "digest_mismatch")
+        self.assertFalse(digest_result.accepted)
+        self.assertEqual(media_result.status, "media_type_mismatch")
+        self.assertFalse(media_result.accepted)
+
+    def test_explicit_approval_accepts_matching_bytes_from_unlisted_final_host(self):
+        result = protocol.verify_representation(
+            representation=self.representation(),
+            authorization=self.authorization(
+                final_url="https://other.example/image.png",
+                trusted_hosts=[],
+                approved=True,
+            ),
+            observed_media_type="image/png",
+            content=b"known image bytes",
+        )
+
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.status, "verified")
+
+    def test_verify_command_authorizes_final_host_before_opening_content(self):
+        completed = subprocess.run(
+            [sys.executable, str(SCRIPT), "verify-artifact"],
+            input=json.dumps(
+                {
+                    "representation": self.representation(),
+                    "final_url": "https://other.example/image.png",
+                    "observed_media_type": "image/png",
+                    "content_path": "/path/that/does/not/exist.png",
+                    "trusted_artifact_hosts": [],
+                }
+            ),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertFalse(result["allowed"])
+        self.assertEqual(result["status"], "approval_required")
+
+    def test_representation_rejects_fields_outside_v1(self):
+        with self.assertRaises(protocol.ProtocolError):
+            protocol.verify_representation(
+                representation={**self.representation(), "filename": "image.png"},
+                authorization=self.authorization(),
+                observed_media_type="image/png",
+                content=b"known image bytes",
+            )
+
+    def test_non_boolean_approval_is_rejected(self):
+        with self.assertRaises(protocol.ProtocolError):
+            self.authorization(
+                final_url="https://other.example/image.png",
+                trusted_hosts=[],
+                approved="false",
+            )
+
+    def test_verify_artifact_command_reports_digest_mismatch(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            artifact = Path(temporary) / "image.png"
+            artifact.write_bytes(b"different bytes")
+            completed = subprocess.run(
+                [sys.executable, str(SCRIPT), "verify-artifact"],
+                input=json.dumps(
+                    {
+                        "representation": self.representation(),
+                        "final_url": "https://assets.example/image.png",
+                        "observed_media_type": "image/png",
+                        "content_path": str(artifact),
+                        "trusted_artifact_hosts": ["assets.example"],
+                    }
+                ),
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertFalse(result["accepted"])
+        self.assertEqual(result["status"], "digest_mismatch")
+
+    def test_file_representation_command_hashes_published_bytes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            artifact = Path(temporary) / "image.png"
+            artifact.write_bytes(b"known image bytes")
+            completed = subprocess.run(
+                [sys.executable, str(SCRIPT), "file-representation"],
+                input=json.dumps(
+                    {
+                        "content_path": str(artifact),
+                        "url": "https://assets.example/image.png",
+                        "media_type": "image/png",
+                    }
+                ),
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        representation = json.loads(completed.stdout)
+        self.assertEqual(
+            representation["sha256"], hashlib.sha256(b"known image bytes").hexdigest()
+        )
+
 
 class RoundTripFixtureTests(unittest.TestCase):
     def test_valid_fixture_crosses_requester_and_producer_contract(self):
@@ -360,6 +564,55 @@ class RoundTripFixtureTests(unittest.TestCase):
             matches[0]["sources"],
         )
         self.assertEqual(errors, [])
+
+
+class RequestDiscoveryTests(unittest.TestCase):
+    def test_requests_without_contributions_are_prioritized_and_errors_are_isolated(self):
+        answered_id = REQUEST_ID
+        unanswered_id = "22222222-2222-4222-8222-222222222222"
+        requests = [
+            {
+                "id": "answered",
+                "note": json.dumps(
+                    protocol.request_envelope(
+                        request_id=answered_id,
+                        brief="An answered request.",
+                    )
+                ),
+            },
+            {
+                "id": "unanswered",
+                "note": json.dumps(
+                    protocol.request_envelope(
+                        request_id=unanswered_id,
+                        brief="An unanswered request.",
+                    )
+                ),
+            },
+        ]
+        contribution = protocol.contribution_envelope(
+            request_id=answered_id,
+            representations=[
+                {
+                    "url": "https://assets.example/image.png",
+                    "media_type": "image/png",
+                    "sha256": "a" * 64,
+                }
+            ],
+        )
+        contributions = [
+            {"id": "malformed", "note": "not json"},
+            {"id": "valid", "note": json.dumps(contribution)},
+        ]
+
+        prioritized, errors = protocol.prioritize_requests(requests, contributions)
+
+        self.assertEqual(
+            [record["id"] for record in prioritized], ["unanswered", "answered"]
+        )
+        self.assertEqual(prioritized[0]["contribution_count"], 0)
+        self.assertEqual(prioritized[1]["contribution_count"], 1)
+        self.assertEqual(errors[0]["record_id"], "malformed")
 
 
 if __name__ == "__main__":
