@@ -1,5 +1,7 @@
 # Image Upgrader acceptance
 
+The initial release also requires the complete Claude-to-Codex scenario in the Request Image Generation acceptance suite. Image Upgrader is the producer in that Computer Use-driven round trip; its CLI observations, publication evidence, Contribution provenance, and cleanup targets enter the shared receipt.
+
 ## Producer-first setup and conservative rerun
 
 **Entry prompts**
@@ -11,6 +13,7 @@
 
 - The first run uses an owner or isolated test state with a confirmed-absent canonical configuration and no matching role types.
 - Separate seeded runs expose exactly one compatible pair, a partial pair, duplicate role types, a missing configured type, and a configured type with the wrong role name.
+- The expected owner and a unique run identifier are known before the first mutation.
 
 **Observable outcome**
 
@@ -20,8 +23,8 @@
 
 **Mutations, approval gates, cleanup, and evidence**
 
-- Verify the owner before mutations. Record created types and configuration immediately, then remove only scenario-created state after its convergence check.
-- Preserve the full observed input, setup action or error, exact writes, verification read, and cleanup result.
+- Verify the owner before mutations. Record each created type and configuration identifier plus remote path in the cleanup manifest immediately, then remove only scenario-created state after its convergence check and in reverse dependency order.
+- Preserve the full observed input, setup action or error, exact writes, verification read, and final cleanup status. An incomplete cleanup fails the run and retains the manifest.
 
 ## Discover and contribute to one text-only Request
 
