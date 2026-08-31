@@ -344,14 +344,36 @@ async def run_one_configured_type(args: argparse.Namespace) -> int:
     return 0 if all(result.passed for result in results) else 1
 
 
-async def audit_all_annotations(mcp_project: str | None = None) -> int:
-    data_types = load_custom_annotation_types()
-    if not data_types:
+async def audit_annotations(
+    mcp_project: str | None = None, *, one_per_base: bool = False
+) -> int:
+    all_data_types = load_custom_annotation_types()
+    if not all_data_types:
         raise ParityTestError("No user-defined annotation types were found")
     counts_by_base: dict[str, int] = {}
-    for data_type in data_types:
+    for data_type in all_data_types:
         base_type = data_type.partition("/")[0]
         counts_by_base[base_type] = counts_by_base.get(base_type, 0) + 1
+    if one_per_base:
+        insufficient = [
+            base_type
+            for base_type, count in counts_by_base.items()
+            if count < 2
+        ]
+        if insufficient:
+            raise ParityTestError(
+                "One-per-base audit requires multiple custom annotations for: "
+                + ", ".join(sorted(insufficient))
+            )
+        selected_bases: set[str] = set()
+        data_types = []
+        for data_type in all_data_types:
+            base_type = data_type.partition("/")[0]
+            if base_type not in selected_bases:
+                selected_bases.add(base_type)
+                data_types.append(data_type)
+    else:
+        data_types = all_data_types
 
     expected_owner = cli_owner_id()
     type_results = []
@@ -402,7 +424,12 @@ async def audit_all_annotations(mcp_project: str | None = None) -> int:
         for interface in ("cli", "mcp")
     )
     report = {
-        "scenario": "all-custom-annotation-write-parity",
+        "scenario": (
+            "one-per-base-custom-annotation-write-parity"
+            if one_per_base
+            else "all-custom-annotation-write-parity"
+        ),
+        "selection": "one-per-base" if one_per_base else "all",
         "same_authenticated_owner": True,
         "custom_type_count": len(type_results),
         "counts_by_base": counts_by_base,
@@ -433,10 +460,16 @@ def main() -> int:
         default="request_data_type",
         help="Configured custom type to exercise.",
     )
-    parser.add_argument(
+    audit_group = parser.add_mutually_exclusive_group()
+    audit_group.add_argument(
         "--all-annotations",
         action="store_true",
         help="Exercise every recordable user-defined annotation type.",
+    )
+    audit_group.add_argument(
+        "--one-per-base",
+        action="store_true",
+        help="Exercise one custom annotation per base with multiple peers.",
     )
     parser.add_argument(
         "--mcp-project",
@@ -445,8 +478,11 @@ def main() -> int:
     args = parser.parse_args()
     try:
         operation = (
-            audit_all_annotations(args.mcp_project)
-            if args.all_annotations
+            audit_annotations(
+                args.mcp_project,
+                one_per_base=args.one_per_base,
+            )
+            if args.all_annotations or args.one_per_base
             else run_one_configured_type(args)
         )
         return asyncio.run(operation)
