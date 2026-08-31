@@ -1,0 +1,4 @@
+interface:
+  display_name: "Request Image Generation"
+  short_description: "Request images through a Fulcra producer"
+  default_prompt: "Use $request-image-generation to request an image from an image-capable agent through Fulcra."

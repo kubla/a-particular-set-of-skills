@@ -1,0 +1,4 @@
+interface:
+  display_name: "Image Upgrader"
+  short_description: "Fulfill image requests left in Fulcra"
+  default_prompt: "Use $image-upgrader to find an Image Upgrade Request in Fulcra and contribute a generated image."
