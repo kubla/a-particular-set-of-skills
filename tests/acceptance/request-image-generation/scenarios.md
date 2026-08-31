@@ -136,6 +136,7 @@ Use this live diagnostic when a Request write succeeds through the Fulcra CLI bu
 uv run --script tests/acceptance/request-image-generation/scripts/verify_custom_type_write_parity.py
 uv run --script tests/acceptance/request-image-generation/scripts/verify_custom_type_write_parity.py --role contribution_data_type
 uv run --script tests/acceptance/request-image-generation/scripts/verify_custom_type_write_parity.py --all-annotations
+uv run --script tests/acceptance/request-image-generation/scripts/verify_custom_type_write_parity.py --mcp-project /path/to/fulcra-context-mcp
 ```
 
 **Preconditions**
@@ -143,6 +144,7 @@ uv run --script tests/acceptance/request-image-generation/scripts/verify_custom_
 - The canonical Image Upgrade configuration exists and names two distinct `MomentAnnotation/<UUID>` types.
 - The current Fulcra CLI and the published `fulcra-context-mcp@latest` server can authenticate as the same owner.
 - The exhaustive mode enumerates every recordable user-defined annotation. It supports Boolean, Duration, Moment, Numeric, and Scale annotation bases and reports only redacted composite addresses.
+- Pass `--mcp-project` to launch a local MCP checkout over stdio and validate a candidate server change against the same live control.
 
 **Observable outcome**
 

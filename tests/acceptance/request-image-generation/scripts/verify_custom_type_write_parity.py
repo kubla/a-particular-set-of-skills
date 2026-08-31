@@ -216,14 +216,21 @@ def tool_text(result: Any) -> str:
 
 
 @asynccontextmanager
-async def mcp_session() -> AsyncIterator[ClientSession]:
+async def mcp_session(project: str | None = None) -> AsyncIterator[ClientSession]:
     env = dict(os.environ)
     env["SSL_CERT_FILE"] = certifi.where()
-    parameters = StdioServerParameters(
-        command="uvx",
-        args=["fulcra-context-mcp@latest"],
-        env=env,
-    )
+    if project:
+        parameters = StdioServerParameters(
+            command="uv",
+            args=["run", "--project", project, "fulcra-context-mcp"],
+            env=env,
+        )
+    else:
+        parameters = StdioServerParameters(
+            command="uvx",
+            args=["fulcra-context-mcp@latest"],
+            env=env,
+        )
     async with (
         stdio_client(parameters) as (read, write),
         ClientSession(read, write) as session,
@@ -304,7 +311,7 @@ async def run_one_configured_type(args: argparse.Namespace) -> int:
     mcp_fixture = fixture_for(data_type, mcp_marker)
 
     expected_owner = cli_owner_id()
-    async with mcp_session() as session:
+    async with mcp_session(args.mcp_project) as session:
         if await mcp_owner_id(session) != expected_owner:
             raise ParityTestError("CLI and MCP are authenticated as different owners")
         mcp_exact_catalog_resolved = await mcp_catalog_resolves_exact_type(
@@ -337,7 +344,7 @@ async def run_one_configured_type(args: argparse.Namespace) -> int:
     return 0 if all(result.passed for result in results) else 1
 
 
-async def audit_all_annotations() -> int:
+async def audit_all_annotations(mcp_project: str | None = None) -> int:
     data_types = load_custom_annotation_types()
     if not data_types:
         raise ParityTestError("No user-defined annotation types were found")
@@ -348,7 +355,7 @@ async def audit_all_annotations() -> int:
 
     expected_owner = cli_owner_id()
     type_results = []
-    async with mcp_session() as session:
+    async with mcp_session(mcp_project) as session:
         if await mcp_owner_id(session) != expected_owner:
             raise ParityTestError("CLI and MCP are authenticated as different owners")
         for index, data_type in enumerate(data_types, start=1):
@@ -431,10 +438,14 @@ def main() -> int:
         action="store_true",
         help="Exercise every recordable user-defined annotation type.",
     )
+    parser.add_argument(
+        "--mcp-project",
+        help="Run the MCP server from this local Python project instead of PyPI.",
+    )
     args = parser.parse_args()
     try:
         operation = (
-            audit_all_annotations()
+            audit_all_annotations(args.mcp_project)
             if args.all_annotations
             else run_one_configured_type(args)
         )
