@@ -126,6 +126,32 @@
 
 - Run identifier, host/runtime, owner ID, prompt and response, complete query observation, parse results, approval event if any, retrieval metadata, computed digest, rendered or unrendered presentation state, and cleanup status.
 
+## Exact custom-type write parity diagnostic
+
+Use this live diagnostic when a Request write succeeds through the Fulcra CLI but fails through Fulcra MCP, or after either interface changes. It exercises the public `fulcra record` command and an actual stdio MCP session calling `record_data`; it does not import server resolver internals.
+
+**Entry commands**
+
+```bash
+uv run --script tests/acceptance/request-image-generation/scripts/verify_custom_type_write_parity.py
+uv run --script tests/acceptance/request-image-generation/scripts/verify_custom_type_write_parity.py --role contribution_data_type
+```
+
+**Preconditions**
+
+- The canonical Image Upgrade configuration exists and names two distinct `MomentAnnotation/<UUID>` types.
+- The current Fulcra CLI and the published `fulcra-context-mcp@latest` server can authenticate as the same owner.
+
+**Observable outcome**
+
+- MCP resolves the exact custom type through `get_data_catalog`.
+- Each interface accepts the same exact composite type address, one record becomes observable, and cleanup succeeds.
+- The script exits nonzero when either interface fails. `mcp_specific_failure: true` means the CLI passed while MCP failed against the same owner and type semantics.
+
+**Mutations and cleanup**
+
+- Each interface receives a separate UUID-marked test note. The script queries the configured type, deletes every record carrying either marker, verifies absence, and reports `cleanup_complete` without printing owner or custom-type UUIDs.
+
 ## Claude-to-Codex release round trip
 
 This is the initial-release authority for both skills. Drive the visible Claude and Codex product interfaces through Computer Use; do not replace either agent with a direct test script.
