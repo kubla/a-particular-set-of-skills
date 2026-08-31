@@ -4,7 +4,9 @@ Models and agents can be replaced. What they learn about their user should survi
 
 This is a collection of independently installable [Agent Skills](https://agentskills.io/) built on [Fulcra](https://fulcradynamics.com/). Each skill gives an agent a focused workflow over the owner's context lake. Everything required at runtime lives inside the skill directory.
 
-Skills access Fulcra exclusively through the current CLI:
+Each skill declares whether it accesses Fulcra through the CLI or an authenticated MCP connection. Users need only the interface declared by that skill.
+
+CLI-backed skills use the current Fulcra CLI:
 
 ```bash
 uvx --from fulcra-api@latest fulcra <command>

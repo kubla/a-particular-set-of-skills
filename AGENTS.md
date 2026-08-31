@@ -2,13 +2,19 @@
 
 This repository uses Fulcra as an owner-controlled context backend. Context may outlive any particular application, agent, model, or provider; agents are clients of that context, not its owners.
 
-Every skill in this repository is built on Fulcra and conforms to the [Agent Skills specification](https://agentskills.io/specification). Access Fulcra through the current CLI:
+Every skill in this repository is built on Fulcra, conforms to the [Agent Skills specification](https://agentskills.io/specification), and is independently distributable.
+
+Each skill declares its required Fulcra interface in its `compatibility` field. Use only the interface the skill declares; repository membership does not imply shell or CLI access.
+
+- CLI-backed skills use the current Fulcra CLI:
 
 ```bash
 uvx --from fulcra-api@latest fulcra <command>
 ```
 
-Each skill must be independently distributable and declare `Requires uv and network access.` in its `compatibility` field.
+- MCP-backed skills use the authenticated Fulcra MCP connection exposed by the host product.
+
+Follow `docs/agents/skill-authoring.md` for access declarations and acceptance requirements.
 
 Consult live documentation when implementation details matter:
 

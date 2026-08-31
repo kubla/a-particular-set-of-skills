@@ -6,11 +6,39 @@ Use these repository conventions whenever you create or change a skill.
 
 Each directory under `skills/` is an independently distributable [Agent Skill](https://agentskills.io/specification). Keep everything the skill needs at runtime inside its directory; repository-level authoring documents, tests, and sibling skills are unavailable after distribution.
 
-Every `SKILL.md` must declare:
+Every `SKILL.md` must describe its actual Fulcra access requirements in its `compatibility` field. Repository membership does not imply shell or CLI access.
+
+## Fulcra access
+
+Choose and declare the skill's Fulcra interface before implementation. The skill must use only its declared interface and explain how to recover when required access is unavailable or unauthenticated.
+
+### CLI-backed skills
+
+Use the current Fulcra CLI without pinning:
+
+```bash
+uvx --from fulcra-api@latest fulcra <command>
+```
+
+Declare:
 
 ```yaml
-compatibility: Requires uv and network access.
+compatibility: Requires uv, network access, and an authenticated Fulcra account.
 ```
+
+Do not require a globally installed `fulcra` executable. Use the CLI as the Fulcra boundary for instructions and bundled scripts. Keep authentication guidance to what the skill's workflow specifically requires.
+
+### MCP-backed skills
+
+Use the authenticated Fulcra MCP connection supplied by the host product. Do not assume shell, filesystem, Python, `uv`, or CLI access.
+
+Declare the permissions the workflow actually requires. For a read-write skill:
+
+```yaml
+compatibility: Requires an authenticated Fulcra MCP connection with read and write access.
+```
+
+Keep credentials and user-specific identifiers out of the skill package. Resolve owner-specific configuration through the authenticated connection at invocation time.
 
 ## Releases
 
@@ -19,14 +47,6 @@ Version each independently distributable skill with Semantic Versioning. Put its
 Publish human-facing release notes as a manually curated GitHub Release attached to that tag. Scope the notes to the affected skill rather than treating every repository commit since its previous tag as part of the release. Lead with the outcome, then cover user-visible changes, upgrade action, compatibility or breaking changes, sanitized verification, and a comparison link. Keep `SKILL.md` focused on current behavior and keep raw acceptance receipts local.
 
 Treat runtime/configuration format versions as separate schemas. Do not infer a skill release from an integer such as `"version": 1` in a configuration file or Projection Map.
-
-Perform every Fulcra operation through:
-
-```bash
-uvx --from fulcra-api@latest fulcra <command>
-```
-
-Use the CLI as the Fulcra boundary for instructions and bundled scripts. Keep authentication guidance to what the skill's workflow specifically requires.
 
 ## Context collectors
 
@@ -57,13 +77,13 @@ A skill change is complete when every applicable check passes:
 
 1. Validate each affected directory with `uvx --from skills-ref agentskills validate <skill-directory>`.
 2. Run the relevant tests for bundled scripts.
-3. Invoke the skill through an agent and exercise its complete workflow against the expected authenticated Fulcra account.
+3. Invoke the skill through an agent and exercise its complete workflow against the expected authenticated Fulcra account through its declared interface.
 
-Record the acceptance scenario under `tests/acceptance/<skill-name>/`. The scenario must state its entry prompt, preconditions, observable outcome, mutations, approval gates, cleanup, and required evidence.
+Record the acceptance scenario under `tests/acceptance/<skill-name>/`. The scenario must state its entry prompt, preconditions, Fulcra interface and host or runtime, observable outcome, mutations, approval gates, cleanup, and required evidence.
 
 ## Live-account acceptance
 
-Before a mutating scenario begins, use `user-info` to verify the authenticated Fulcra user ID against the expected author account.
+Before a mutating scenario begins, use the declared interface's user-information operation to verify the authenticated Fulcra user ID against the expected author account.
 
 Give test-created artifacts a unique skill-and-run identifier. Record their exact IDs and remote paths in a cleanup manifest as they are created, then clean them up in reverse dependency order. If cleanup is incomplete, fail the run and retain the manifest for recovery.
 
@@ -73,13 +93,13 @@ Write raw command output, account-derived data, cleanup manifests, and acceptanc
 
 - skill and scenario;
 - timestamp;
-- resolved `fulcra-api` version;
-- `uv` version;
+- Fulcra interface and host or runtime;
+- resolved `fulcra-api` and `uv` versions for CLI-backed skills;
 - authenticated Fulcra user ID;
 - result and evidence for each expected outcome; and
 - cleanup status.
 
-Until the Fulcra CLI exposes its package version directly, resolve it with:
+For CLI-backed acceptance, until the Fulcra CLI exposes its package version directly, resolve it with:
 
 ```bash
 uvx --from fulcra-api@latest python -c \
@@ -88,6 +108,6 @@ uvx --from fulcra-api@latest python -c \
 
 See `tests/acceptance/README.md` for the repository-only acceptance layout.
 
-## Fulcra releases
+## Fulcra interface changes
 
-Treat every Fulcra CLI release as an acceptance event for all maintained skills. Run the full live-account suite against the release candidate before publication and against `fulcra-api@latest` after publication. See `docs/adr/0002-test-all-skills-for-every-fulcra-cli-release.md`.
+Treat every Fulcra CLI release as an acceptance event for all maintained CLI-backed skills. Run their live-account suite against the release candidate before publication and against `fulcra-api@latest` after publication. Re-run affected MCP-backed scenarios when the Fulcra MCP tool contract changes. See `docs/adr/0018-declare-fulcra-access-per-skill.md`.
