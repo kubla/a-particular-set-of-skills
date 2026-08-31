@@ -135,22 +135,26 @@ Use this live diagnostic when a Request write succeeds through the Fulcra CLI bu
 ```bash
 uv run --script tests/acceptance/request-image-generation/scripts/verify_custom_type_write_parity.py
 uv run --script tests/acceptance/request-image-generation/scripts/verify_custom_type_write_parity.py --role contribution_data_type
+uv run --script tests/acceptance/request-image-generation/scripts/verify_custom_type_write_parity.py --all-annotations
 ```
 
 **Preconditions**
 
 - The canonical Image Upgrade configuration exists and names two distinct `MomentAnnotation/<UUID>` types.
 - The current Fulcra CLI and the published `fulcra-context-mcp@latest` server can authenticate as the same owner.
+- The exhaustive mode enumerates every recordable user-defined annotation. It supports Boolean, Duration, Moment, Numeric, and Scale annotation bases and reports only redacted composite addresses.
 
 **Observable outcome**
 
 - MCP resolves the exact custom type through `get_data_catalog`.
 - Each interface accepts the same exact composite type address, one record becomes observable, and cleanup succeeds.
 - The script exits nonzero when either interface fails. `mcp_specific_failure: true` means the CLI passed while MCP failed against the same owner and type semantics.
+- In exhaustive mode, `mcp_specific_failure_count` counts exact custom types accepted by the CLI but rejected by MCP. `mcp_ambiguous` counts MCP writes that discarded the custom UUID and reduced the address to a non-unique base type.
 
 **Mutations and cleanup**
 
 - Each interface receives a separate UUID-marked test note. The script queries the configured type, deletes every record carrying either marker, verifies absence, and reports `cleanup_complete` without printing owner or custom-type UUIDs.
+- Exhaustive mode performs that write, independent observation, deletion, and absence verification serially for every discovered custom annotation.
 
 ## Claude-to-Codex release round trip
 
