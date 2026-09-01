@@ -216,7 +216,9 @@ def validate_request_envelope(value: Mapping[str, Any]) -> dict[str, Any]:
         raise ProtocolError(f"request must use protocol {PROTOCOL}")
     unknown = set(value) - {"protocol", "request_id", "brief", "inputs"}
     if unknown:
-        raise ProtocolError(f"request contains unsupported fields: {', '.join(sorted(unknown))}")
+        raise ProtocolError(
+            f"request contains unsupported fields: {', '.join(sorted(unknown))}"
+        )
     inputs = value.get("inputs")
     if inputs is not None and not isinstance(inputs, list):
         raise ProtocolError("inputs must be an array when present")
@@ -267,7 +269,9 @@ def _representation(value: Mapping[str, Any]) -> dict[str, Any]:
         if dimension in value:
             size = value[dimension]
             if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
-                raise ProtocolError(f"representation {dimension} must be a positive integer")
+                raise ProtocolError(
+                    f"representation {dimension} must be a positive integer"
+                )
             representation[dimension] = size
     return representation
 
@@ -282,7 +286,10 @@ def verify_representation(
     """Decide whether retrieved representation bytes satisfy the v1 contract."""
 
     declared = _representation(representation)
-    if not isinstance(authorization, RetrievalAuthorization) or not authorization.allowed:
+    if (
+        not isinstance(authorization, RetrievalAuthorization)
+        or not authorization.allowed
+    ):
         raise ProtocolError("representation bytes were retrieved without authorization")
     host = authorization.host
     actual_digest = hashlib.sha256(content).hexdigest()
@@ -578,9 +585,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             value_to_write: Mapping[str, Any]
             if args.operation == "contribution-record":
-                value_to_write = {
-                    "note": json.dumps(envelope, separators=(",", ":"))
-                }
+                value_to_write = {"note": json.dumps(envelope, separators=(",", ":"))}
             else:
                 value_to_write = envelope
             json.dump(value_to_write, sys.stdout, separators=(",", ":"))

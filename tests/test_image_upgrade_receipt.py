@@ -114,7 +114,7 @@ def valid_receipt():
                     "registered_at": "2026-08-31T16:06:00Z",
                     "cleaned_at": "2026-08-31T16:08:00Z",
                     "result": "deleted",
-                }
+                },
             ],
         },
     }

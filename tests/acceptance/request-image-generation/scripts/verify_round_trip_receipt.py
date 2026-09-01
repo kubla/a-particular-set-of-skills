@@ -108,7 +108,9 @@ def verify_receipt(receipt: Mapping[str, Any]) -> list[str]:
             producer.get("owner_observed_before_mutation") is True,
             "producer owner was not observed before mutation",
         )
-        require(producer.get("request_observed") is True, "producer did not observe Request")
+        require(
+            producer.get("request_observed") is True, "producer did not observe Request"
+        )
         require(
             producer.get("contribution_observed") is True,
             "Contribution was not observed",
@@ -131,8 +133,12 @@ def verify_receipt(receipt: Mapping[str, Any]) -> list[str]:
             require(bool(artifact.get(field)), f"artifact {field} is missing")
         for field in ("retrieval_evidence", "render_evidence"):
             require(is_evidence(artifact.get(field)), f"artifact {field} is missing")
-        require(artifact.get("bytes_retrieved") is True, "artifact bytes were not retrieved")
-        require(artifact.get("digest_verified") is True, "artifact digest was not verified")
+        require(
+            artifact.get("bytes_retrieved") is True, "artifact bytes were not retrieved"
+        )
+        require(
+            artifact.get("digest_verified") is True, "artifact digest was not verified"
+        )
         require(
             artifact.get("declared_sha256") == artifact.get("retrieved_sha256"),
             "artifact digests differ",
@@ -147,7 +153,9 @@ def verify_receipt(receipt: Mapping[str, Any]) -> list[str]:
     if isinstance(cleanup, Mapping):
         require(cleanup.get("status") == "complete", "cleanup is not complete")
         targets = cleanup.get("targets")
-        require(isinstance(targets, list) and bool(targets), "cleanup targets are missing")
+        require(
+            isinstance(targets, list) and bool(targets), "cleanup targets are missing"
+        )
         if isinstance(targets, list):
             kinds: set[str] = set()
             ordered_targets: list[Mapping[str, Any]] = []
@@ -168,7 +176,9 @@ def verify_receipt(receipt: Mapping[str, Any]) -> list[str]:
                     kinds.add(str(target.get("kind")))
                     ordered_targets.append(target)
                     if target.get("result") == "retained":
-                        require(bool(target.get("reason")), "retained target lacks a reason")
+                        require(
+                            bool(target.get("reason")), "retained target lacks a reason"
+                        )
             require(
                 {"request", "artifact", "contribution"}.issubset(kinds),
                 "cleanup omits a core round-trip mutation",
@@ -181,7 +191,11 @@ def verify_receipt(receipt: Mapping[str, Any]) -> list[str]:
             artifact_target = targets_by_kind.get("artifact", {})
             require(
                 request_target.get("id")
-                == (requester.get("request_id") if isinstance(requester, Mapping) else None),
+                == (
+                    requester.get("request_id")
+                    if isinstance(requester, Mapping)
+                    else None
+                ),
                 "cleanup Request identity does not match the receipt",
             )
             require(

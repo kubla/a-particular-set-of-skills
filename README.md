@@ -16,7 +16,11 @@ uvx --from fulcra-api@latest fulcra <command>
 
 | Skill | What it does | Compatibility |
 | --- | --- | --- |
+| [Request Image Generation](skills/request-image-generation/) | Lets an MCP-only AI product request images and retrieve verified candidates contributed by an image-capable agent. | Authenticated Fulcra MCP with read and write access |
+| [Image Upgrader](skills/image-upgrader/) | Finds Image Upgrade Requests, generates candidates, publishes verified image bytes, and records linked Contributions. | Image generation, `uv`, network access, authenticated Fulcra CLI, and an HTTPS publishing route |
 | [Computer History Collector](skills/computer-history-collector/) | Copies completed Codex Computer History summaries into Fulcra so agents the owner authorizes can read the same work history. | macOS, Codex Computer History, `uv`, and network access |
+
+Request Image Generation and Image Upgrader are two sides of one Typed Blackboard workflow. A product such as Claude can write a text-only Request through Fulcra MCP. A separate agent such as Codex can generate and publish the image, then leave a digest-addressed Contribution for Claude to retrieve and render. The first release supports agents connected to the same Fulcra owner.
 
 ## Repository layout
 

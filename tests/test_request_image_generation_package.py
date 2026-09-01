@@ -16,7 +16,9 @@ SCRIPT = (
     / "scripts"
     / "package_skill.py"
 )
-SPEC = importlib.util.spec_from_file_location("package_request_image_generation", SCRIPT)
+SPEC = importlib.util.spec_from_file_location(
+    "package_request_image_generation", SCRIPT
+)
 packager = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
 sys.modules[SPEC.name] = packager
@@ -42,6 +44,7 @@ class RequestImageGenerationPackageTests(unittest.TestCase):
         self.assertEqual(
             members,
             [
+                "request-image-generation/README.md",
                 "request-image-generation/SKILL.md",
                 "request-image-generation/agents/openai.yaml",
                 "request-image-generation/references/check-contributions.md",
@@ -51,7 +54,9 @@ class RequestImageGenerationPackageTests(unittest.TestCase):
                 "request-image-generation/references/valid-round-trip.json",
             ],
         )
-        self.assertEqual({name.split("/", 1)[0] for name in members}, {"request-image-generation"})
+        self.assertEqual(
+            {name.split("/", 1)[0] for name in members}, {"request-image-generation"}
+        )
         self.assertNotIn("request-image-generation/config.json", members)
         for marker in (
             b"access_token",

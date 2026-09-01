@@ -12,22 +12,14 @@ class ImageUpgradePackageTests(unittest.TestCase):
             ROOT / "skills" / "image-upgrader" / "references" / "protocol.md"
         ).read_bytes()
         requester = (
-            ROOT
-            / "skills"
-            / "request-image-generation"
-            / "references"
-            / "protocol.md"
+            ROOT / "skills" / "request-image-generation" / "references" / "protocol.md"
         ).read_bytes()
 
         self.assertEqual(requester, producer)
 
     def test_sibling_skills_ship_the_same_valid_round_trip_fixture(self):
         producer = (
-            ROOT
-            / "skills"
-            / "image-upgrader"
-            / "references"
-            / "valid-round-trip.json"
+            ROOT / "skills" / "image-upgrader" / "references" / "valid-round-trip.json"
         ).read_bytes()
         requester = (
             ROOT

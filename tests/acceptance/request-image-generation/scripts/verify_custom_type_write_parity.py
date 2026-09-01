@@ -53,7 +53,9 @@ class RecordFixture:
     mcp_fields: dict[str, Any]
 
 
-def run_cli(*args: str, input_text: str | None = None) -> subprocess.CompletedProcess[str]:
+def run_cli(
+    *args: str, input_text: str | None = None
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["uvx", "--from", "fulcra-api@latest", "fulcra", *args],
         input=input_text,
@@ -161,7 +163,9 @@ def records_with_marker(data_type: str, marker: str) -> list[dict[str, Any]]:
     return list(by_id.values())
 
 
-def wait_for_records(data_type: str, marker: str, timeout: float = 12.0) -> list[dict[str, Any]]:
+def wait_for_records(
+    data_type: str, marker: str, timeout: float = 12.0
+) -> list[dict[str, Any]]:
     deadline = time.monotonic() + timeout
     while True:
         records = records_with_marker(data_type, marker)
@@ -189,7 +193,9 @@ def exercise_cli(
         with tempfile.NamedTemporaryFile("w", suffix=".json", encoding="utf-8") as file:
             file.write(payload)
             file.flush()
-            completed = run_cli("record", data_type, "-f", file.name, "--source", SOURCE)
+            completed = run_cli(
+                "record", data_type, "-f", file.name, "--source", SOURCE
+            )
         records = wait_for_records(data_type, marker)
         passed = completed.returncode == 0 and len(records) == 1
         detail = (
@@ -210,9 +216,7 @@ def exercise_cli(
 
 
 def tool_text(result: Any) -> str:
-    return "\n".join(
-        block.text for block in result.content if hasattr(block, "text")
-    )
+    return "\n".join(block.text for block in result.content if hasattr(block, "text"))
 
 
 @asynccontextmanager
@@ -320,9 +324,7 @@ async def run_one_configured_type(args: argparse.Namespace) -> int:
         if not mcp_exact_catalog_resolved:
             raise ParityTestError("MCP catalog did not resolve the exact custom type")
         cli_result = exercise_cli(data_type, cli_marker, cli_fixture)
-        mcp_result = await exercise_mcp(
-            session, data_type, mcp_marker, mcp_fixture
-        )
+        mcp_result = await exercise_mcp(session, data_type, mcp_marker, mcp_fixture)
 
     results = [cli_result, mcp_result]
     report = {
@@ -356,9 +358,7 @@ async def audit_annotations(
         counts_by_base[base_type] = counts_by_base.get(base_type, 0) + 1
     if one_per_base:
         insufficient = [
-            base_type
-            for base_type, count in counts_by_base.items()
-            if count < 2
+            base_type for base_type, count in counts_by_base.items() if count < 2
         ]
         if insufficient:
             raise ParityTestError(
@@ -385,9 +385,7 @@ async def audit_annotations(
             marker_root = f"fulcra-interface-parity/{uuid.uuid4()}"
             cli_marker = f"{marker_root}/cli"
             mcp_marker = f"{marker_root}/mcp"
-            catalog_resolved = await mcp_catalog_resolves_exact_type(
-                session, data_type
-            )
+            catalog_resolved = await mcp_catalog_resolves_exact_type(session, data_type)
             cli_result = exercise_cli(
                 data_type, cli_marker, fixture_for(data_type, cli_marker)
             )

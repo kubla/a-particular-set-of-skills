@@ -52,7 +52,9 @@ class RequestEnvelopeTests(unittest.TestCase):
         envelope = protocol.parse_request_note(note)
 
         self.assertEqual(envelope["request_id"], REQUEST_ID)
-        self.assertEqual(envelope["brief"], "A precise blue heron drawn as a field-guide plate.")
+        self.assertEqual(
+            envelope["brief"], "A precise blue heron drawn as a field-guide plate."
+        )
 
     def test_request_rejects_noncanonical_or_extended_identity(self):
         with self.assertRaises(protocol.ProtocolError):
@@ -249,6 +251,7 @@ class SetupReconciliationTests(unittest.TestCase):
                             configuration_value=case["configuration"],
                             catalog=case["catalog"],
                         )
+
 
 class ContributionEnvelopeTests(unittest.TestCase):
     def test_valid_contribution_is_canonicalized(self):
@@ -538,12 +541,8 @@ class RoundTripFixtureTests(unittest.TestCase):
 
         configuration = protocol.configuration(
             request_data_type=fixture["configuration"]["request_data_type"],
-            contribution_data_type=fixture["configuration"][
-                "contribution_data_type"
-            ],
-            trusted_artifact_hosts=fixture["configuration"][
-                "trusted_artifact_hosts"
-            ],
+            contribution_data_type=fixture["configuration"]["contribution_data_type"],
+            trusted_artifact_hosts=fixture["configuration"]["trusted_artifact_hosts"],
         )
         request = protocol.validate_request_envelope(fixture["request"])
         receipt = protocol.request_receipt(**fixture["request_receipt"])
@@ -567,7 +566,9 @@ class RoundTripFixtureTests(unittest.TestCase):
 
 
 class RequestDiscoveryTests(unittest.TestCase):
-    def test_requests_without_contributions_are_prioritized_and_errors_are_isolated(self):
+    def test_requests_without_contributions_are_prioritized_and_errors_are_isolated(
+        self,
+    ):
         answered_id = REQUEST_ID
         unanswered_id = "22222222-2222-4222-8222-222222222222"
         requests = [
